@@ -9,6 +9,9 @@ const api = {
   loadProject: (projectPath: string): Promise<StoryProject> => ipcRenderer.invoke('project:load', projectPath),
   saveProjectFile: (projectPath: string, relativePath: string, content: string): Promise<void> =>
     ipcRenderer.invoke('project:saveFile', projectPath, relativePath, content),
+  deleteCharacterFile: (projectPath: string, characterId: string): Promise<void> =>
+    ipcRenderer.invoke('project:deleteCharacterFile', projectPath, characterId),
+  openExportsFolder: (projectPath: string): Promise<string> => ipcRenderer.invoke('project:openExportsFolder', projectPath),
   openProjectDialog: (): Promise<string | null> => ipcRenderer.invoke('dialog:openProject'),
   chooseProjectParentDialog: (): Promise<string | null> => ipcRenderer.invoke('dialog:chooseProjectParent')
 };

@@ -1,8 +1,8 @@
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { afterEach, describe, expect, it } from 'vitest';
-import { createProject, createProjectInParent, loadProject, toProjectFolderName } from '../main/projectStore';
+import { createProject, createProjectInParent, deleteCharacterFile, loadProject, toProjectFolderName } from '../main/projectStore';
 
 let cleanupPath = '';
 
@@ -78,6 +78,17 @@ describe('projectStore', () => {
     const project = await loadProject(projectPath);
 
     expect(project.characters.map((character) => character.id)).toContain('ash');
+  });
+
+  it('deletes a character file by safe character id', async () => {
+    cleanupPath = await mkdtemp(join(tmpdir(), 'storyforge-'));
+    const projectPath = join(cleanupPath, 'AshRoad');
+    await createProject(projectPath, 'Ash Road');
+    await writeFile(join(projectPath, 'characters', 'ash.json'), '{}', 'utf8');
+
+    await deleteCharacterFile(projectPath, 'ash');
+
+    await expect(stat(join(projectPath, 'characters', 'ash.json'))).rejects.toThrow();
   });
 
   it('reports corrupt JSON without replacing it', async () => {

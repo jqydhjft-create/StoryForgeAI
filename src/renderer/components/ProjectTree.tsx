@@ -12,20 +12,42 @@ interface ProjectTreeProps {
   project: StoryProject;
   selection: TreeSelection;
   onSelect: (selection: TreeSelection) => void;
+  onAddChapter: () => void;
+  onAddCharacter: () => void;
+  onDeleteCharacter: () => void;
 }
 
-export function ProjectTree({ language, project, selection, onSelect }: ProjectTreeProps) {
-  const items: TreeSelection[] = [
-    { kind: 'world', id: 'bible' },
-    ...project.characters.map((character) => ({ kind: 'character' as const, id: character.id })),
-    { kind: 'plot', id: 'beat_sheet' },
-    ...project.chapters.map((chapter) => ({ kind: 'chapter' as const, id: String(chapter.meta.id) })),
-    { kind: 'export', id: 'summary' }
+type TreeItem = TreeSelection & { label: string };
+
+export function ProjectTree({
+  language,
+  project,
+  selection,
+  onSelect,
+  onAddChapter,
+  onAddCharacter,
+  onDeleteCharacter
+}: ProjectTreeProps) {
+  const items: TreeItem[] = [
+    { kind: 'world', id: 'bible', label: 'Bible' },
+    ...project.characters.map((character) => ({ kind: 'character' as const, id: character.id, label: character.name })),
+    { kind: 'plot', id: 'beat_sheet', label: 'Beat Sheet' },
+    ...project.chapters.map((chapter) => ({
+      kind: 'chapter' as const,
+      id: String(chapter.meta.id),
+      label: chapter.meta.title
+    })),
+    { kind: 'export', id: 'summary', label: 'Summary' }
   ];
 
   return (
     <nav className="project-tree">
       <h2>{project.settings.name}</h2>
+      <div className="tree-actions">
+        <button onClick={onAddChapter}>{t(language, 'tree.addChapter')}</button>
+        <button onClick={onAddCharacter}>{t(language, 'tree.addCharacter')}</button>
+        {selection.kind === 'character' ? <button onClick={onDeleteCharacter}>{t(language, 'tree.deleteCharacter')}</button> : null}
+      </div>
       {items.map((item) => (
         <button
           key={`${item.kind}-${item.id}`}
@@ -33,7 +55,7 @@ export function ProjectTree({ language, project, selection, onSelect }: ProjectT
           onClick={() => onSelect(item)}
         >
           <span>{t(language, `tree.kind.${item.kind}`)}</span>
-          <strong>{item.id}</strong>
+          <strong>{item.label}</strong>
         </button>
       ))}
     </nav>

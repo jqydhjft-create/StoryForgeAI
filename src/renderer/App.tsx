@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { StoryProject, SummaryData } from '../shared/types.js';
+import type { ProjectFileWrite, StoryProject, SummaryData } from '../shared/types.js';
 import { StartScreen } from './components/StartScreen';
 import { ProjectTree, type TreeSelection } from './components/ProjectTree';
 import { EditorPane } from './components/EditorPane';
@@ -10,6 +10,14 @@ import { applyEditableDocument, getEditableDocument } from './services/editorDoc
 import { writeProjectExports } from './services/exportService';
 import { generateStorySeed } from './services/mockAiService';
 import type { StorySeed } from './services/mockAiService';
+import {
+  applyStorySeedToProject,
+  buildSummaryCacheFile,
+  createNewCharacter,
+  createNextChapter,
+  deleteCharacter
+} from './services/projectMutations';
+import { buildSummary } from './services/summaryService';
 
 function createInMemoryProject(seed: StorySeed): StoryProject {
   return {
@@ -47,6 +55,21 @@ export function App() {
 
   const canUseDesktopApi = useMemo(() => Boolean(window.storyforge), []);
   const activeDocument = project ? getEditableDocument(project, selection) : null;
+
+  async function saveProjectFiles(projectPath: string, files: ProjectFileWrite[]) {
+    for (const file of files) {
+      await window.storyforge.saveProjectFile(projectPath, file.relativePath, file.content);
+    }
+  }
+
+  async function deleteCharacterFiles(projectPath: string, relativePaths: string[]) {
+    for (const relativePath of relativePaths) {
+      const match = /^characters\/([a-z0-9-]+)\.json$/i.exec(relativePath);
+      if (match) {
+        await window.storyforge.deleteCharacterFile(projectPath, match[1]);
+      }
+    }
+  }
 
   useEffect(() => {
     setSaveStatus('');
@@ -113,6 +136,75 @@ export function App() {
     }
   }
 
+  async function applyProjectMutation(result: ReturnType<typeof createNextChapter>) {
+    try {
+      if (result.project.rootPath && canUseDesktopApi) {
+        await saveProjectFiles(result.project.rootPath, result.files);
+        await deleteCharacterFiles(result.project.rootPath, result.deletedFiles);
+      }
+      setProject(result.project);
+      setSummary(result.project.summary);
+      setSelection(result.selection);
+      setSaveStatus(t(language, 'editor.saved'));
+    } catch (event) {
+      setSaveStatus(t(language, 'editor.saveFailed'));
+      setError(event instanceof Error ? event.message : t(language, 'editor.saveFailed'));
+    }
+  }
+
+  async function addChapter() {
+    if (!project) return;
+    await applyProjectMutation(createNextChapter(project));
+  }
+
+  async function addCharacter() {
+    if (!project) return;
+    await applyProjectMutation(createNewCharacter(project));
+  }
+
+  async function deleteSelectedCharacter() {
+    if (!project || selection.kind !== 'character') return;
+    await applyProjectMutation(deleteCharacter(project, selection.id));
+  }
+
+  async function refreshSummary() {
+    if (!project) return;
+
+    const nextSummary = buildSummary(project.chapters);
+    const nextProject = { ...project, summary: nextSummary };
+    try {
+      if (project.rootPath && canUseDesktopApi) {
+        const file = buildSummaryCacheFile(nextProject, nextSummary);
+        await window.storyforge.saveProjectFile(project.rootPath, file.relativePath, file.content);
+      }
+      setProject(nextProject);
+      setSummary(nextSummary);
+      setSaveStatus(t(language, 'editor.saved'));
+    } catch (event) {
+      setSaveStatus(t(language, 'editor.saveFailed'));
+      setError(event instanceof Error ? event.message : t(language, 'editor.saveFailed'));
+    }
+  }
+
+  async function applySeed(seed: StorySeed) {
+    if (!project) return;
+
+    try {
+      const result = applyStorySeedToProject(project, seed);
+      if (result.project.rootPath && canUseDesktopApi) {
+        await saveProjectFiles(result.project.rootPath, result.files);
+        await deleteCharacterFiles(result.project.rootPath, result.deletedFiles);
+      }
+      setProject(result.project);
+      setSummary(result.project.summary);
+      setSelection(result.selection);
+      setExportStatus(t(language, 'assistant.seedApplied'));
+    } catch (event) {
+      setExportStatus(t(language, 'assistant.seedFailed'));
+      setError(event instanceof Error ? event.message : t(language, 'assistant.seedFailed'));
+    }
+  }
+
   async function writeExports() {
     if (!project) return;
 
@@ -130,6 +222,16 @@ export function App() {
     }
   }
 
+  async function openExportsFolder() {
+    if (!project?.rootPath || !canUseDesktopApi) {
+      setExportStatus(t(language, 'assistant.openExportsUnavailable'));
+      return;
+    }
+
+    const result = await window.storyforge.openExportsFolder(project.rootPath);
+    setExportStatus(result ? result : t(language, 'assistant.exportsOpened'));
+  }
+
   if (!project) {
     return (
       <StartScreen
@@ -143,6 +245,7 @@ export function App() {
         onCreateDemo={() => {
           const demo = createInMemoryProject(generateStorySeed('A retired knight protects an orphan in the wasteland.'));
           setProject(demo);
+          setSummary(demo.summary);
         }}
       />
     );
@@ -150,7 +253,15 @@ export function App() {
 
   return (
     <main className="workspace">
-      <ProjectTree language={language} project={project} selection={selection} onSelect={setSelection} />
+      <ProjectTree
+        language={language}
+        project={project}
+        selection={selection}
+        onSelect={setSelection}
+        onAddChapter={addChapter}
+        onAddCharacter={addCharacter}
+        onDeleteCharacter={deleteSelectedCharacter}
+      />
       <EditorPane
         language={language}
         document={activeDocument}
@@ -162,15 +273,11 @@ export function App() {
         language={language}
         project={project}
         summary={summary}
-        onSummary={setSummary}
+        onRefreshSummary={refreshSummary}
         exportStatus={exportStatus}
         onWriteExports={writeExports}
-        onSeed={(seed) => {
-          const nextProject = createInMemoryProject(seed);
-          setProject(nextProject);
-          setSummary(nextProject.summary);
-          setSelection({ kind: 'world', id: 'bible' });
-        }}
+        onOpenExportsFolder={openExportsFolder}
+        onSeed={applySeed}
       />
     </main>
   );

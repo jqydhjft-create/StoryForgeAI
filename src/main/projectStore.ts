@@ -1,4 +1,4 @@
-import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import {
   createDefaultChapterMeta,
@@ -105,4 +105,12 @@ export async function loadProject(projectPath: string): Promise<StoryProject> {
 
 export async function saveProjectFile(projectPath: string, relativePath: string, content: string): Promise<void> {
   await writeFile(join(projectPath, relativePath), content, 'utf8');
+}
+
+export async function deleteCharacterFile(projectPath: string, characterId: string): Promise<void> {
+  if (!/^[a-z0-9-]+$/i.test(characterId)) {
+    throw new Error('Invalid character id');
+  }
+
+  await rm(join(projectPath, 'characters', `${characterId}.json`), { force: true });
 }

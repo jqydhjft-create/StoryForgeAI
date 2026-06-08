@@ -18,4 +18,10 @@ describe('i18n', () => {
     expect(t('en', 'assistant.writeExports')).toBe('Write export files');
     expect(t('zh-CN', 'assistant.exportsWritten')).toBe('导出文件已写入项目 exports 文件夹');
   });
+
+  it('translates project action labels', () => {
+    expect(t('en', 'tree.addChapter')).toBe('New chapter');
+    expect(t('zh-CN', 'tree.addCharacter')).toBe('新增人物');
+    expect(t('en', 'assistant.openExportsFolder')).toBe('Open exports folder');
+  });
 });

@@ -29,10 +29,18 @@ type TranslationKey =
   | 'assistant.writeExports'
   | 'assistant.exportsWritten'
   | 'assistant.exportsReady'
+  | 'assistant.exportsOpened'
+  | 'assistant.openExportsFolder'
+  | 'assistant.openExportsUnavailable'
   | 'assistant.exportFailed'
+  | 'assistant.seedApplied'
+  | 'assistant.seedFailed'
   | 'summary.timelineEntries'
   | 'summary.locations'
   | 'summary.characters'
+  | 'tree.addChapter'
+  | 'tree.addCharacter'
+  | 'tree.deleteCharacter'
   | 'tree.kind.world'
   | 'tree.kind.character'
   | 'tree.kind.plot'
@@ -72,10 +80,18 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     'assistant.writeExports': 'Write export files',
     'assistant.exportsWritten': 'Export files written to the project exports folder',
     'assistant.exportsReady': 'Exports are ready in the preview',
+    'assistant.exportsOpened': 'Exports folder opened',
+    'assistant.openExportsFolder': 'Open exports folder',
+    'assistant.openExportsUnavailable': 'Create or open a desktop project to open exports',
     'assistant.exportFailed': 'Export failed',
+    'assistant.seedApplied': 'Starter assets saved to the project',
+    'assistant.seedFailed': 'Unable to save starter assets',
     'summary.timelineEntries': 'timeline entries',
     'summary.locations': 'locations',
     'summary.characters': 'characters',
+    'tree.addChapter': 'New chapter',
+    'tree.addCharacter': 'New character',
+    'tree.deleteCharacter': 'Delete character',
     'tree.kind.world': 'World',
     'tree.kind.character': 'Character',
     'tree.kind.plot': 'Plot',
@@ -114,10 +130,18 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     'assistant.writeExports': '写出导出文件',
     'assistant.exportsWritten': '导出文件已写入项目 exports 文件夹',
     'assistant.exportsReady': '导出内容已在预览中准备好',
+    'assistant.exportsOpened': '已打开导出文件夹',
+    'assistant.openExportsFolder': '打开导出文件夹',
+    'assistant.openExportsUnavailable': '请先创建或打开桌面项目',
     'assistant.exportFailed': '导出失败',
+    'assistant.seedApplied': '起始资产已保存到项目',
+    'assistant.seedFailed': '无法保存起始资产',
     'summary.timelineEntries': '条时间线',
     'summary.locations': '个地点',
     'summary.characters': '个人物',
+    'tree.addChapter': '新增章节',
+    'tree.addCharacter': '新增人物',
+    'tree.deleteCharacter': '删除人物',
     'tree.kind.world': '世界观',
     'tree.kind.character': '人物',
     'tree.kind.plot': '情节',

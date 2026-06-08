@@ -130,7 +130,17 @@ button.secondary {
   margin-top: 0;
 }
 
-.project-tree button {
+.tree-actions {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.tree-actions button {
+  width: 100%;
+}
+
+.project-tree > button {
   width: 100%;
   display: grid;
   grid-template-columns: 72px 1fr;
@@ -139,7 +149,7 @@ button.secondary {
   margin-bottom: 8px;
 }
 
-.project-tree button.active {
+.project-tree > button.active {
   border-color: #2f6f8f;
   background: #e9f4f8;
 }
