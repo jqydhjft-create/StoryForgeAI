@@ -1,19 +1,31 @@
+import type { Language } from '../i18n';
+import { t } from '../i18n';
+
 interface StartScreenProps {
+  language: Language;
+  onLanguageChange: (language: Language) => void;
   onCreateDemo: () => void;
   onOpenProject: () => void;
   error: string;
 }
 
-export function StartScreen({ onCreateDemo, onOpenProject, error }: StartScreenProps) {
+export function StartScreen({ language, onLanguageChange, onCreateDemo, onOpenProject, error }: StartScreenProps) {
   return (
     <main className="start-screen">
       <section className="start-panel">
+        <label className="language-select">
+          <span>{t(language, 'language.label')}</span>
+          <select value={language} onChange={(event) => onLanguageChange(event.target.value as Language)}>
+            <option value="en">{t(language, 'language.english')}</option>
+            <option value="zh-CN">{t(language, 'language.chinese')}</option>
+          </select>
+        </label>
         <p className="eyebrow">StoryForge AI</p>
-        <h1>Desktop story workspace</h1>
+        <h1>{t(language, 'start.title')}</h1>
         <div className="start-actions">
-          <button onClick={onCreateDemo}>Create demo project</button>
+          <button onClick={onCreateDemo}>{t(language, 'start.createDemo')}</button>
           <button className="secondary" onClick={onOpenProject}>
-            Open project
+            {t(language, 'start.openProject')}
           </button>
         </div>
         {error ? <p className="error-text">{error}</p> : null}

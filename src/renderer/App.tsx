@@ -4,6 +4,8 @@ import { StartScreen } from './components/StartScreen';
 import { ProjectTree, type TreeSelection } from './components/ProjectTree';
 import { EditorPane } from './components/EditorPane';
 import { AssistantPanel } from './components/AssistantPanel';
+import type { Language } from './i18n';
+import { t } from './i18n';
 import { generateStorySeed } from './services/mockAiService';
 import type { StorySeed } from './services/mockAiService';
 
@@ -32,6 +34,7 @@ function createInMemoryProject(seed: StorySeed): StoryProject {
 }
 
 export function App() {
+  const [language, setLanguage] = useState<Language>('en');
   const [project, setProject] = useState<StoryProject | null>(null);
   const [summary, setSummary] = useState<SummaryData>({ timeline: [], locations: [], characters: [] });
   const [selection, setSelection] = useState<TreeSelection>({ kind: 'world', id: 'bible' });
@@ -44,7 +47,7 @@ export function App() {
 
     try {
       if (!canUseDesktopApi) {
-        setError('Desktop API is not available in this preview.');
+        setError(t(language, 'error.desktopApiUnavailable'));
         return;
       }
 
@@ -55,13 +58,15 @@ export function App() {
         setSummary(loadedProject.summary);
       }
     } catch (event) {
-      setError(event instanceof Error ? event.message : 'Unable to open project.');
+      setError(event instanceof Error ? event.message : t(language, 'error.openProject'));
     }
   }
 
   if (!project) {
     return (
       <StartScreen
+        language={language}
+        onLanguageChange={setLanguage}
         error={error}
         onOpenProject={openProject}
         onCreateDemo={() => {
@@ -74,9 +79,10 @@ export function App() {
 
   return (
     <main className="workspace">
-      <ProjectTree project={project} selection={selection} onSelect={setSelection} />
-      <EditorPane project={project} selection={selection} />
+      <ProjectTree language={language} project={project} selection={selection} onSelect={setSelection} />
+      <EditorPane language={language} project={project} selection={selection} />
       <AssistantPanel
+        language={language}
         project={project}
         summary={summary}
         onSummary={setSummary}

@@ -1,36 +1,39 @@
 import type { StoryProject, SummaryData } from '../../shared/types.js';
+import type { Language } from '../i18n';
+import { formatCount, t } from '../i18n';
 import { buildNovelExport, buildSummaryExport } from '../services/exportService';
 import { buildSummary } from '../services/summaryService';
 import { IdeaWizard } from './IdeaWizard';
 import type { StorySeed } from '../services/mockAiService';
 
 interface AssistantPanelProps {
+  language: Language;
   project: StoryProject;
   summary: SummaryData;
   onSummary: (summary: SummaryData) => void;
   onSeed: (seed: StorySeed) => void;
 }
 
-export function AssistantPanel({ project, summary, onSummary, onSeed }: AssistantPanelProps) {
+export function AssistantPanel({ language, project, summary, onSummary, onSeed }: AssistantPanelProps) {
   const novelExport = buildNovelExport(project.settings.name, project.chapters);
   const summaryExport = buildSummaryExport(summary);
 
   return (
     <aside className="assistant-panel">
-      <IdeaWizard onGenerated={onSeed} />
+      <IdeaWizard language={language} onGenerated={onSeed} />
       <section>
-        <h3>Review</h3>
-        <p>No continuity warnings in the current mock review.</p>
+        <h3>{t(language, 'assistant.review')}</h3>
+        <p>{t(language, 'assistant.reviewOk')}</p>
       </section>
       <section>
-        <h3>Summary</h3>
-        <button onClick={() => onSummary(buildSummary(project.chapters))}>Refresh summary</button>
-        <p>{summary.timeline.length} timeline entries</p>
-        <p>{summary.locations.length} locations</p>
-        <p>{summary.characters.length} characters</p>
+        <h3>{t(language, 'assistant.summary')}</h3>
+        <button onClick={() => onSummary(buildSummary(project.chapters))}>{t(language, 'assistant.refreshSummary')}</button>
+        <p>{formatCount(language, 'summary.timelineEntries', summary.timeline.length)}</p>
+        <p>{formatCount(language, 'summary.locations', summary.locations.length)}</p>
+        <p>{formatCount(language, 'summary.characters', summary.characters.length)}</p>
       </section>
       <section>
-        <h3>Export preview</h3>
+        <h3>{t(language, 'assistant.exportPreview')}</h3>
         <textarea value={`${novelExport}\n\n${summaryExport}`} readOnly />
       </section>
     </aside>
