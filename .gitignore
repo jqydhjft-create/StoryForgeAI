@@ -1,0 +1,9 @@
+node_modules/
+dist/
+dist-electron/
+coverage/
+.vite/
+.superpowers/
+.tools/
+node-v*-win-x64.zip
+*.log
