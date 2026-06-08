@@ -6,7 +6,16 @@ const project: StoryProject = {
   rootPath: 'D:/Stories/Ash-Road',
   settings: { name: 'Ash Road', createdAt: '2026-06-08T00:00:00.000Z', reviewStrictness: 'medium' },
   world: { genre: 'Low fantasy', premise: 'A road story', rules: ['Keep moving'], terms: {} },
-  characters: [],
+  characters: [
+    {
+      id: 'ash',
+      name: 'Ash',
+      role: 'Protagonist',
+      motivation: 'Find the road home',
+      flaw: 'Distrustful',
+      arc: 'Learns to ask for help'
+    }
+  ],
   plot: [{ id: 'opening', label: 'Opening', summary: 'A beginning', chapterHint: 1 }],
   chapters: [
     {
@@ -32,6 +41,14 @@ describe('editorDocuments', () => {
     expect(document?.content).toContain('Opening text.');
   });
 
+  it('maps a character selection to an individual character file', () => {
+    const document = getEditableDocument(project, { kind: 'character', id: 'ash' });
+
+    expect(document?.title).toBe('Ash');
+    expect(document?.relativePath).toBe('characters/ash.json');
+    expect(document?.content).toContain('Find the road home');
+  });
+
   it('applies edited world JSON to project state', () => {
     const nextProject = applyEditableDocument(
       project,
@@ -46,5 +63,26 @@ describe('editorDocuments', () => {
     const nextProject = applyEditableDocument(project, { kind: 'chapter', id: '1' }, '# Chapel\n\nChanged.');
 
     expect(nextProject.chapters[0].content).toContain('Changed.');
+  });
+
+  it('applies edited character JSON to project state', () => {
+    const nextProject = applyEditableDocument(
+      project,
+      { kind: 'character', id: 'ash' },
+      JSON.stringify(
+        {
+          id: 'ash',
+          name: 'Ash',
+          role: 'Protagonist',
+          motivation: 'Protect Milo',
+          flaw: 'Distrustful',
+          arc: 'Learns to ask for help'
+        },
+        null,
+        2
+      )
+    );
+
+    expect(nextProject.characters[0].motivation).toBe('Protect Milo');
   });
 });

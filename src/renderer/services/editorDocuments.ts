@@ -1,4 +1,4 @@
-import type { PlotBeat, StoryProject, TreeNodeKind, WorldBible } from '../../shared/types.js';
+import type { CharacterProfile, PlotBeat, StoryProject, TreeNodeKind, WorldBible } from '../../shared/types.js';
 
 export interface EditorSelection {
   kind: TreeNodeKind;
@@ -13,6 +13,10 @@ export interface EditableDocument {
 
 function formatChapterPath(id: number): string {
   return `chapters/${String(id).padStart(2, '0')}.md`;
+}
+
+function formatCharacterPath(id: string): string {
+  return `characters/${id}.json`;
 }
 
 function formatJson(value: unknown): string {
@@ -33,6 +37,17 @@ export function getEditableDocument(project: StoryProject, selection: EditorSele
       title: 'Beat Sheet',
       relativePath: 'plot/beat_sheet.json',
       content: formatJson(project.plot)
+    };
+  }
+
+  if (selection.kind === 'character') {
+    const character = project.characters.find((item) => item.id === selection.id);
+    if (!character) return null;
+
+    return {
+      title: character.name,
+      relativePath: formatCharacterPath(character.id),
+      content: formatJson(character)
     };
   }
 
@@ -62,6 +77,14 @@ export function applyEditableDocument(project: StoryProject, selection: EditorSe
     return {
       ...project,
       plot: JSON.parse(content) as PlotBeat[]
+    };
+  }
+
+  if (selection.kind === 'character') {
+    const nextCharacter = JSON.parse(content) as CharacterProfile;
+    return {
+      ...project,
+      characters: project.characters.map((character) => (character.id === selection.id ? nextCharacter : character))
     };
   }
 

@@ -54,6 +54,32 @@ describe('projectStore', () => {
     expect(project.summary.timeline).toEqual([]);
   });
 
+  it('loads individual character profile files', async () => {
+    cleanupPath = await mkdtemp(join(tmpdir(), 'storyforge-'));
+    const projectPath = join(cleanupPath, 'AshRoad');
+    await createProject(projectPath, 'Ash Road');
+    await writeFile(
+      join(projectPath, 'characters', 'ash.json'),
+      JSON.stringify(
+        {
+          id: 'ash',
+          name: 'Ash',
+          role: 'Protagonist',
+          motivation: 'Find the road home',
+          flaw: 'Distrustful',
+          arc: 'Learns to ask for help'
+        },
+        null,
+        2
+      ),
+      'utf8'
+    );
+
+    const project = await loadProject(projectPath);
+
+    expect(project.characters.map((character) => character.id)).toContain('ash');
+  });
+
   it('reports corrupt JSON without replacing it', async () => {
     cleanupPath = await mkdtemp(join(tmpdir(), 'storyforge-'));
     const projectPath = join(cleanupPath, 'AshRoad');

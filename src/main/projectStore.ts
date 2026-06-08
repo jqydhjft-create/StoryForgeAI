@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import {
   createDefaultChapterMeta,
@@ -22,6 +22,19 @@ async function readJson<T>(projectPath: string, relativePath: string): Promise<T
   } catch {
     throw new Error(`Invalid JSON in ${relativePath}`);
   }
+}
+
+async function loadIndividualCharacters(projectPath: string): Promise<CharacterProfile[]> {
+  const entries = await readdir(join(projectPath, 'characters'), { withFileTypes: true });
+  const profileFiles = entries
+    .filter((entry) => entry.isFile() && entry.name.endsWith('.json'))
+    .map((entry) => entry.name)
+    .filter((name) => name !== 'protagonist.json' && name !== 'antagonist.json')
+    .sort();
+
+  return Promise.all(
+    profileFiles.map((fileName) => readJson<CharacterProfile>(projectPath, join('characters', fileName)))
+  );
 }
 
 export async function createProject(projectPath: string, name: string): Promise<StoryProject> {
@@ -69,6 +82,7 @@ export async function loadProject(projectPath: string): Promise<StoryProject> {
   const world = await readJson<WorldBible>(projectPath, 'world/bible.json');
   const protagonist = await readJson<CharacterProfile[]>(projectPath, 'characters/protagonist.json');
   const antagonist = await readJson<CharacterProfile[]>(projectPath, 'characters/antagonist.json');
+  const individualCharacters = await loadIndividualCharacters(projectPath);
   const plot = await readJson<PlotBeat[]>(projectPath, 'plot/beat_sheet.json');
   const metaFile = await readJson<{ chapters: ChapterMeta[]; summaryCache: SummaryData }>(projectPath, 'chapters/meta.json');
   const chapters = await Promise.all(
@@ -82,7 +96,7 @@ export async function loadProject(projectPath: string): Promise<StoryProject> {
     rootPath: projectPath,
     settings,
     world,
-    characters: [...protagonist, ...antagonist],
+    characters: [...protagonist, ...antagonist, ...individualCharacters],
     plot,
     chapters,
     summary: metaFile.summaryCache
