@@ -1,50 +1,51 @@
-import type { StoryProject } from '../../shared/types.js';
+import { useEffect, useState } from 'react';
 import type { Language } from '../i18n';
 import { t } from '../i18n';
+import type { EditableDocument } from '../services/editorDocuments';
 import type { TreeSelection } from './ProjectTree';
 
 interface EditorPaneProps {
   language: Language;
-  project: StoryProject;
+  document: EditableDocument | null;
   selection: TreeSelection;
+  saveStatus: string;
+  onSave: (content: string) => void;
 }
 
-export function EditorPane({ language, project, selection }: EditorPaneProps) {
-  const chapter =
-    selection.kind === 'chapter' ? project.chapters.find((item) => String(item.meta.id) === selection.id) : null;
+export function EditorPane({ language, document, selection, saveStatus, onSave }: EditorPaneProps) {
+  const [draft, setDraft] = useState(document?.content ?? '');
+
+  useEffect(() => {
+    setDraft(document?.content ?? '');
+  }, [document?.relativePath, document?.content]);
+
+  const title =
+    selection.kind === 'world'
+      ? t(language, 'editor.world')
+      : selection.kind === 'plot'
+        ? t(language, 'editor.plot')
+        : selection.kind === 'export'
+          ? t(language, 'editor.exports')
+          : document?.title ?? t(language, 'editor.noEditableDocument');
 
   return (
     <section className="editor-pane">
-      {selection.kind === 'world' ? (
+      <div className="editor-toolbar">
+        <h2>{title}</h2>
+        {document ? (
+          <div className="editor-actions">
+            {saveStatus ? <span>{saveStatus}</span> : null}
+            <button onClick={() => onSave(draft)}>{t(language, 'editor.save')}</button>
+          </div>
+        ) : null}
+      </div>
+      {document ? <textarea value={draft} onChange={(event) => setDraft(event.target.value)} /> : null}
+      {!document && selection.kind === 'export' ? (
         <>
-          <h2>{t(language, 'editor.world')}</h2>
-          <textarea value={JSON.stringify(project.world, null, 2)} readOnly />
-        </>
-      ) : null}
-      {selection.kind === 'character' ? (
-        <>
-          <h2>{t(language, 'editor.character')}</h2>
-          <textarea value={JSON.stringify(project.characters.find((item) => item.id === selection.id), null, 2)} readOnly />
-        </>
-      ) : null}
-      {selection.kind === 'plot' ? (
-        <>
-          <h2>{t(language, 'editor.plot')}</h2>
-          <textarea value={JSON.stringify(project.plot, null, 2)} readOnly />
-        </>
-      ) : null}
-      {chapter ? (
-        <>
-          <h2>{chapter.meta.title}</h2>
-          <textarea value={chapter.content} readOnly />
-        </>
-      ) : null}
-      {selection.kind === 'export' ? (
-        <>
-          <h2>{t(language, 'editor.exports')}</h2>
           <p>{t(language, 'editor.exportsHint')}</p>
         </>
       ) : null}
+      {!document && selection.kind !== 'export' ? <p>{t(language, 'editor.noEditableDocument')}</p> : null}
     </section>
   );
 }

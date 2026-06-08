@@ -155,6 +155,26 @@ button.secondary {
   padding: 18px;
 }
 
+.editor-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.editor-toolbar h2 {
+  margin: 0;
+}
+
+.editor-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #4d6b7c;
+  font-size: 13px;
+}
+
 .editor-pane textarea,
 .assistant-panel textarea,
 .idea-wizard textarea {

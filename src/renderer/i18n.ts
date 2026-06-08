@@ -15,6 +15,10 @@ type TranslationKey =
   | 'editor.plot'
   | 'editor.exports'
   | 'editor.exportsHint'
+  | 'editor.noEditableDocument'
+  | 'editor.save'
+  | 'editor.saved'
+  | 'editor.saveFailed'
   | 'assistant.idea'
   | 'assistant.generate'
   | 'assistant.review'
@@ -50,6 +54,10 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     'editor.plot': 'Beat Sheet',
     'editor.exports': 'Exports',
     'editor.exportsHint': 'Use the assistant panel to build novel and summary exports.',
+    'editor.noEditableDocument': 'No editable document for this selection.',
+    'editor.save': 'Save',
+    'editor.saved': 'Saved',
+    'editor.saveFailed': 'Save failed',
     'assistant.idea': 'Idea to story',
     'assistant.generate': 'Generate starter assets',
     'assistant.review': 'Review',
@@ -84,6 +92,10 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     'editor.plot': '情节蓝图',
     'editor.exports': '导出',
     'editor.exportsHint': '在辅助面板生成小说和摘要导出。',
+    'editor.noEditableDocument': '当前选择没有可编辑文档。',
+    'editor.save': '保存',
+    'editor.saved': '已保存',
+    'editor.saveFailed': '保存失败',
     'assistant.idea': '想法到故事',
     'assistant.generate': '生成起始资产',
     'assistant.review': '审查',

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { StoryProject, SummaryData } from '../shared/types.js';
 import { StartScreen } from './components/StartScreen';
 import { ProjectTree, type TreeSelection } from './components/ProjectTree';
@@ -6,6 +6,7 @@ import { EditorPane } from './components/EditorPane';
 import { AssistantPanel } from './components/AssistantPanel';
 import type { Language } from './i18n';
 import { t } from './i18n';
+import { applyEditableDocument, getEditableDocument } from './services/editorDocuments';
 import { generateStorySeed } from './services/mockAiService';
 import type { StorySeed } from './services/mockAiService';
 
@@ -40,8 +41,14 @@ export function App() {
   const [summary, setSummary] = useState<SummaryData>({ timeline: [], locations: [], characters: [] });
   const [selection, setSelection] = useState<TreeSelection>({ kind: 'world', id: 'bible' });
   const [error, setError] = useState('');
+  const [saveStatus, setSaveStatus] = useState('');
 
   const canUseDesktopApi = useMemo(() => Boolean(window.storyforge), []);
+  const activeDocument = project ? getEditableDocument(project, selection) : null;
+
+  useEffect(() => {
+    setSaveStatus('');
+  }, [selection.kind, selection.id, language]);
 
   async function createLocalProject() {
     setError('');
@@ -84,6 +91,22 @@ export function App() {
     }
   }
 
+  async function saveActiveDocument(content: string) {
+    if (!project || !activeDocument) return;
+
+    try {
+      const nextProject = applyEditableDocument(project, selection, content);
+      if (project.rootPath && canUseDesktopApi) {
+        await window.storyforge.saveProjectFile(project.rootPath, activeDocument.relativePath, content);
+      }
+      setProject(nextProject);
+      setSaveStatus(t(language, 'editor.saved'));
+    } catch (event) {
+      setSaveStatus(t(language, 'editor.saveFailed'));
+      setError(event instanceof Error ? event.message : t(language, 'editor.saveFailed'));
+    }
+  }
+
   if (!project) {
     return (
       <StartScreen
@@ -105,7 +128,13 @@ export function App() {
   return (
     <main className="workspace">
       <ProjectTree language={language} project={project} selection={selection} onSelect={setSelection} />
-      <EditorPane language={language} project={project} selection={selection} />
+      <EditorPane
+        language={language}
+        document={activeDocument}
+        selection={selection}
+        saveStatus={saveStatus}
+        onSave={saveActiveDocument}
+      />
       <AssistantPanel
         language={language}
         project={project}
