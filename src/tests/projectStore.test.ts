@@ -2,7 +2,7 @@ import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { afterEach, describe, expect, it } from 'vitest';
-import { createProject, loadProject } from '../main/projectStore';
+import { createProject, createProjectInParent, loadProject, toProjectFolderName } from '../main/projectStore';
 
 let cleanupPath = '';
 
@@ -14,6 +14,22 @@ afterEach(async () => {
 });
 
 describe('projectStore', () => {
+  it('creates a stable folder name from a project title', () => {
+    expect(toProjectFolderName('Ash Road')).toBe('Ash-Road');
+    expect(toProjectFolderName('  Ash: Road!  ')).toBe('Ash-Road');
+    expect(toProjectFolderName('   ')).toBe('StoryForge-Project');
+  });
+
+  it('creates a project inside a parent folder', async () => {
+    cleanupPath = await mkdtemp(join(tmpdir(), 'storyforge-'));
+
+    const project = await createProjectInParent(cleanupPath, 'Ash Road');
+
+    expect(project.rootPath).toBe(join(cleanupPath, 'Ash-Road'));
+    expect(project.settings.name).toBe('Ash Road');
+    expect(await readFile(join(cleanupPath, 'Ash-Road', 'settings.json'), 'utf8')).toContain('Ash Road');
+  });
+
   it('creates a project with required files', async () => {
     cleanupPath = await mkdtemp(join(tmpdir(), 'storyforge-'));
     const projectPath = join(cleanupPath, 'AshRoad');

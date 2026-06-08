@@ -5,6 +5,9 @@ type TranslationKey =
   | 'language.english'
   | 'language.chinese'
   | 'start.title'
+  | 'start.projectName'
+  | 'start.projectNamePlaceholder'
+  | 'start.createProject'
   | 'start.createDemo'
   | 'start.openProject'
   | 'editor.world'
@@ -28,7 +31,8 @@ type TranslationKey =
   | 'tree.kind.chapter'
   | 'tree.kind.export'
   | 'error.desktopApiUnavailable'
-  | 'error.openProject';
+  | 'error.openProject'
+  | 'error.createProject';
 
 const translations: Record<Language, Record<TranslationKey, string>> = {
   en: {
@@ -36,6 +40,9 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     'language.english': 'English',
     'language.chinese': 'Simplified Chinese',
     'start.title': 'Desktop story workspace',
+    'start.projectName': 'Project name',
+    'start.projectNamePlaceholder': 'Ash Road',
+    'start.createProject': 'Create project',
     'start.createDemo': 'Create demo project',
     'start.openProject': 'Open project',
     'editor.world': 'World Bible',
@@ -59,13 +66,17 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     'tree.kind.chapter': 'Chapter',
     'tree.kind.export': 'Export',
     'error.desktopApiUnavailable': 'Desktop API is not available in this preview.',
-    'error.openProject': 'Unable to open project.'
+    'error.openProject': 'Unable to open project.',
+    'error.createProject': 'Unable to create project.'
   },
   'zh-CN': {
     'language.label': '语言',
     'language.english': 'English',
     'language.chinese': '简体中文',
     'start.title': '桌面故事工作台',
+    'start.projectName': '项目名',
+    'start.projectNamePlaceholder': '灰烬之路',
+    'start.createProject': '创建项目',
     'start.createDemo': '创建演示项目',
     'start.openProject': '打开项目',
     'editor.world': '世界观圣经',
@@ -89,7 +100,8 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     'tree.kind.chapter': '章节',
     'tree.kind.export': '导出',
     'error.desktopApiUnavailable': '当前预览无法使用桌面 API。',
-    'error.openProject': '无法打开项目。'
+    'error.openProject': '无法打开项目。',
+    'error.createProject': '无法创建项目。'
   }
 };
 

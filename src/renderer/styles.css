@@ -57,8 +57,27 @@ button.secondary {
   font-size: 28px;
 }
 
+.project-name-field {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 14px;
+  color: #4d5f6d;
+  font-size: 13px;
+}
+
+.project-name-field input {
+  width: 100%;
+  border: 1px solid #c8d0d9;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #1f2933;
+  padding: 9px 10px;
+  font: inherit;
+}
+
 .start-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 10px;
 }
 

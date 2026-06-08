@@ -50,6 +50,20 @@ export async function createProject(projectPath: string, name: string): Promise<
   return loadProject(projectPath);
 }
 
+export function toProjectFolderName(name: string): string {
+  const folderName = name
+    .trim()
+    .replace(/[^a-z0-9]+/gi, '-')
+    .replace(/^-+|-+$/g, '');
+
+  return folderName || 'StoryForge-Project';
+}
+
+export async function createProjectInParent(parentPath: string, name: string): Promise<StoryProject> {
+  const displayName = name.trim() || 'Untitled Story';
+  return createProject(join(parentPath, toProjectFolderName(displayName)), displayName);
+}
+
 export async function loadProject(projectPath: string): Promise<StoryProject> {
   const settings = await readJson<StoryProject['settings']>(projectPath, 'settings.json');
   const world = await readJson<WorldBible>(projectPath, 'world/bible.json');

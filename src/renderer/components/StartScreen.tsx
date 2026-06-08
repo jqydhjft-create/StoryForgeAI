@@ -4,12 +4,24 @@ import { t } from '../i18n';
 interface StartScreenProps {
   language: Language;
   onLanguageChange: (language: Language) => void;
+  projectName: string;
+  onProjectNameChange: (name: string) => void;
+  onCreateProject: () => void;
   onCreateDemo: () => void;
   onOpenProject: () => void;
   error: string;
 }
 
-export function StartScreen({ language, onLanguageChange, onCreateDemo, onOpenProject, error }: StartScreenProps) {
+export function StartScreen({
+  language,
+  onLanguageChange,
+  projectName,
+  onProjectNameChange,
+  onCreateProject,
+  onCreateDemo,
+  onOpenProject,
+  error
+}: StartScreenProps) {
   return (
     <main className="start-screen">
       <section className="start-panel">
@@ -22,8 +34,17 @@ export function StartScreen({ language, onLanguageChange, onCreateDemo, onOpenPr
         </label>
         <p className="eyebrow">StoryForge AI</p>
         <h1>{t(language, 'start.title')}</h1>
+        <label className="project-name-field">
+          <span>{t(language, 'start.projectName')}</span>
+          <input
+            value={projectName}
+            placeholder={t(language, 'start.projectNamePlaceholder')}
+            onChange={(event) => onProjectNameChange(event.target.value)}
+          />
+        </label>
         <div className="start-actions">
-          <button onClick={onCreateDemo}>{t(language, 'start.createDemo')}</button>
+          <button onClick={onCreateProject}>{t(language, 'start.createProject')}</button>
+          <button className="secondary" onClick={onCreateDemo}>{t(language, 'start.createDemo')}</button>
           <button className="secondary" onClick={onOpenProject}>
             {t(language, 'start.openProject')}
           </button>

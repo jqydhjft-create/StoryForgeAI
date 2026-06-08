@@ -35,12 +35,34 @@ function createInMemoryProject(seed: StorySeed): StoryProject {
 
 export function App() {
   const [language, setLanguage] = useState<Language>('en');
+  const [projectName, setProjectName] = useState('Ash Road');
   const [project, setProject] = useState<StoryProject | null>(null);
   const [summary, setSummary] = useState<SummaryData>({ timeline: [], locations: [], characters: [] });
   const [selection, setSelection] = useState<TreeSelection>({ kind: 'world', id: 'bible' });
   const [error, setError] = useState('');
 
   const canUseDesktopApi = useMemo(() => Boolean(window.storyforge), []);
+
+  async function createLocalProject() {
+    setError('');
+
+    try {
+      if (!canUseDesktopApi) {
+        setError(t(language, 'error.desktopApiUnavailable'));
+        return;
+      }
+
+      const parentPath = await window.storyforge.chooseProjectParentDialog();
+      if (parentPath) {
+        const createdProject = await window.storyforge.createProjectInParent(parentPath, projectName);
+        setProject(createdProject);
+        setSummary(createdProject.summary);
+        setSelection({ kind: 'world', id: 'bible' });
+      }
+    } catch (event) {
+      setError(event instanceof Error ? event.message : t(language, 'error.createProject'));
+    }
+  }
 
   async function openProject() {
     setError('');
@@ -67,6 +89,9 @@ export function App() {
       <StartScreen
         language={language}
         onLanguageChange={setLanguage}
+        projectName={projectName}
+        onProjectNameChange={setProjectName}
+        onCreateProject={createLocalProject}
         error={error}
         onOpenProject={openProject}
         onCreateDemo={() => {
