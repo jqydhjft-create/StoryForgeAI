@@ -26,6 +26,10 @@ type TranslationKey =
   | 'assistant.summary'
   | 'assistant.refreshSummary'
   | 'assistant.exportPreview'
+  | 'assistant.writeExports'
+  | 'assistant.exportsWritten'
+  | 'assistant.exportsReady'
+  | 'assistant.exportFailed'
   | 'summary.timelineEntries'
   | 'summary.locations'
   | 'summary.characters'
@@ -65,6 +69,10 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     'assistant.summary': 'Summary',
     'assistant.refreshSummary': 'Refresh summary',
     'assistant.exportPreview': 'Export preview',
+    'assistant.writeExports': 'Write export files',
+    'assistant.exportsWritten': 'Export files written to the project exports folder',
+    'assistant.exportsReady': 'Exports are ready in the preview',
+    'assistant.exportFailed': 'Export failed',
     'summary.timelineEntries': 'timeline entries',
     'summary.locations': 'locations',
     'summary.characters': 'characters',
@@ -103,6 +111,10 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     'assistant.summary': '摘要',
     'assistant.refreshSummary': '刷新摘要',
     'assistant.exportPreview': '导出预览',
+    'assistant.writeExports': '写出导出文件',
+    'assistant.exportsWritten': '导出文件已写入项目 exports 文件夹',
+    'assistant.exportsReady': '导出内容已在预览中准备好',
+    'assistant.exportFailed': '导出失败',
     'summary.timelineEntries': '条时间线',
     'summary.locations': '个地点',
     'summary.characters': '个人物',

@@ -13,4 +13,9 @@ describe('i18n', () => {
     expect(formatCount('en', 'summary.timelineEntries', 2)).toBe('2 timeline entries');
     expect(formatCount('zh-CN', 'summary.timelineEntries', 2)).toBe('2 条时间线');
   });
+
+  it('translates export write status messages', () => {
+    expect(t('en', 'assistant.writeExports')).toBe('Write export files');
+    expect(t('zh-CN', 'assistant.exportsWritten')).toBe('导出文件已写入项目 exports 文件夹');
+  });
 });

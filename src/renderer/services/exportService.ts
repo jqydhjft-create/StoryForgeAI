@@ -1,4 +1,4 @@
-import type { ChapterMeta, SummaryData } from '../../shared/types.js';
+import type { ChapterMeta, ProjectFileWrite, StoryProject, SummaryData } from '../../shared/types.js';
 
 type ChapterInput = { meta: ChapterMeta; content: string };
 
@@ -33,4 +33,30 @@ export function buildSummaryExport(summary: SummaryData): string {
     characterRows,
     ''
   ].join('\n');
+}
+
+export function buildExportFiles(title: string, chapters: ChapterInput[], summary: SummaryData): ProjectFileWrite[] {
+  return [
+    { relativePath: 'exports/novel.txt', content: buildNovelExport(title, chapters) },
+    { relativePath: 'exports/summary.md', content: buildSummaryExport(summary) }
+  ];
+}
+
+export type ExportWriteResult = 'written' | 'preview';
+
+export async function writeProjectExports(
+  project: StoryProject,
+  summary: SummaryData,
+  saveProjectFile?: (projectPath: string, relativePath: string, content: string) => Promise<void>
+): Promise<ExportWriteResult> {
+  if (!project.rootPath || !saveProjectFile) {
+    return 'preview';
+  }
+
+  const files = buildExportFiles(project.settings.name, project.chapters, summary);
+  for (const file of files) {
+    await saveProjectFile(project.rootPath, file.relativePath, file.content);
+  }
+
+  return 'written';
 }

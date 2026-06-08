@@ -175,6 +175,16 @@ button.secondary {
   font-size: 13px;
 }
 
+.export-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 10px;
+  color: #4d6b7c;
+  font-size: 13px;
+}
+
 .editor-pane textarea,
 .assistant-panel textarea,
 .idea-wizard textarea {

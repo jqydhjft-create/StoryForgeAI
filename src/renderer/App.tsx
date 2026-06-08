@@ -7,6 +7,7 @@ import { AssistantPanel } from './components/AssistantPanel';
 import type { Language } from './i18n';
 import { t } from './i18n';
 import { applyEditableDocument, getEditableDocument } from './services/editorDocuments';
+import { writeProjectExports } from './services/exportService';
 import { generateStorySeed } from './services/mockAiService';
 import type { StorySeed } from './services/mockAiService';
 
@@ -42,6 +43,7 @@ export function App() {
   const [selection, setSelection] = useState<TreeSelection>({ kind: 'world', id: 'bible' });
   const [error, setError] = useState('');
   const [saveStatus, setSaveStatus] = useState('');
+  const [exportStatus, setExportStatus] = useState('');
 
   const canUseDesktopApi = useMemo(() => Boolean(window.storyforge), []);
   const activeDocument = project ? getEditableDocument(project, selection) : null;
@@ -49,6 +51,10 @@ export function App() {
   useEffect(() => {
     setSaveStatus('');
   }, [selection.kind, selection.id, language]);
+
+  useEffect(() => {
+    setExportStatus('');
+  }, [language, project?.rootPath]);
 
   async function createLocalProject() {
     setError('');
@@ -107,6 +113,23 @@ export function App() {
     }
   }
 
+  async function writeExports() {
+    if (!project) return;
+
+    setError('');
+    try {
+      const result = await writeProjectExports(
+        project,
+        summary,
+        canUseDesktopApi ? window.storyforge.saveProjectFile : undefined
+      );
+      setExportStatus(t(language, result === 'written' ? 'assistant.exportsWritten' : 'assistant.exportsReady'));
+    } catch (event) {
+      setExportStatus(t(language, 'assistant.exportFailed'));
+      setError(event instanceof Error ? event.message : t(language, 'assistant.exportFailed'));
+    }
+  }
+
   if (!project) {
     return (
       <StartScreen
@@ -140,6 +163,8 @@ export function App() {
         project={project}
         summary={summary}
         onSummary={setSummary}
+        exportStatus={exportStatus}
+        onWriteExports={writeExports}
         onSeed={(seed) => {
           const nextProject = createInMemoryProject(seed);
           setProject(nextProject);

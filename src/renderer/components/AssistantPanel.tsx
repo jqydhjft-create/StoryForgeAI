@@ -12,9 +12,19 @@ interface AssistantPanelProps {
   summary: SummaryData;
   onSummary: (summary: SummaryData) => void;
   onSeed: (seed: StorySeed) => void;
+  exportStatus: string;
+  onWriteExports: () => void;
 }
 
-export function AssistantPanel({ language, project, summary, onSummary, onSeed }: AssistantPanelProps) {
+export function AssistantPanel({
+  language,
+  project,
+  summary,
+  onSummary,
+  onSeed,
+  exportStatus,
+  onWriteExports
+}: AssistantPanelProps) {
   const novelExport = buildNovelExport(project.settings.name, project.chapters);
   const summaryExport = buildSummaryExport(summary);
 
@@ -34,6 +44,10 @@ export function AssistantPanel({ language, project, summary, onSummary, onSeed }
       </section>
       <section>
         <h3>{t(language, 'assistant.exportPreview')}</h3>
+        <div className="export-actions">
+          <button onClick={onWriteExports}>{t(language, 'assistant.writeExports')}</button>
+          {exportStatus ? <span>{exportStatus}</span> : null}
+        </div>
         <textarea value={`${novelExport}\n\n${summaryExport}`} readOnly />
       </section>
     </aside>
