@@ -33,9 +33,9 @@ describe('exportService', () => {
       }
     );
 
-    expect(files.map((file) => file.relativePath)).toEqual(['exports/novel.txt', 'exports/summary.md']);
+    expect(files.map((file) => file.relativePath)).toEqual(['exports/novel.txt']);
     expect(files[0].content).toContain('Opening.');
-    expect(files[1].content).toContain('## Timeline');
+    expect(files[0].content).not.toContain('# Story Summary');
   });
 
   it('writes export files through the provided project file writer', async () => {
@@ -62,7 +62,7 @@ describe('exportService', () => {
     );
 
     expect(result).toBe('written');
-    expect(calls.map((call) => call.relativePath)).toEqual(['exports/novel.txt', 'exports/summary.md']);
+    expect(calls.map((call) => call.relativePath)).toEqual(['exports/novel.txt']);
     expect(calls[0].projectPath).toBe('D:/Stories/Ash-Road');
     expect(calls[0].content).toContain('Opening.');
   });

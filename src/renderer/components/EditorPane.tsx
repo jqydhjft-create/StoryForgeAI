@@ -9,23 +9,43 @@ interface EditorPaneProps {
   document: EditableDocument | null;
   selection: TreeSelection;
   saveStatus: string;
+  canRegenerateChapter: boolean;
+  canRollbackChapter: boolean;
   onSave: (content: string) => void;
+  onDirtyChange: (dirty: boolean) => void;
+  onRegenerateChapter: () => void;
+  onRollbackChapter: () => void;
 }
 
-export function EditorPane({ language, document, selection, saveStatus, onSave }: EditorPaneProps) {
+export function EditorPane({
+  language,
+  document,
+  selection,
+  saveStatus,
+  canRegenerateChapter,
+  canRollbackChapter,
+  onSave,
+  onDirtyChange,
+  onRegenerateChapter,
+  onRollbackChapter
+}: EditorPaneProps) {
   const [draft, setDraft] = useState(document?.content ?? '');
 
   useEffect(() => {
     setDraft(document?.content ?? '');
   }, [document?.relativePath, document?.content]);
 
+  useEffect(() => {
+    onDirtyChange(Boolean(document && !document.readOnly && draft !== document.content));
+  }, [document, draft, onDirtyChange]);
+
   const title =
     selection.kind === 'world'
       ? t(language, 'editor.world')
       : selection.kind === 'plot'
         ? t(language, 'editor.plot')
-        : selection.kind === 'export'
-          ? t(language, 'editor.exports')
+        : selection.kind === 'summary'
+          ? t(language, 'editor.summary')
           : document?.title ?? t(language, 'editor.noEditableDocument');
 
   return (
@@ -35,17 +55,24 @@ export function EditorPane({ language, document, selection, saveStatus, onSave }
         {document ? (
           <div className="editor-actions">
             {saveStatus ? <span>{saveStatus}</span> : null}
-            <button onClick={() => onSave(draft)}>{t(language, 'editor.save')}</button>
+            {selection.kind === 'chapter' ? (
+              <>
+                <button onClick={onRegenerateChapter} disabled={!canRegenerateChapter}>
+                  {t(language, 'editor.regenerateChapter')}
+                </button>
+                <button onClick={onRollbackChapter} disabled={!canRollbackChapter}>
+                  {t(language, 'editor.rollbackChapter')}
+                </button>
+              </>
+            ) : null}
+            {!document.readOnly ? <button onClick={() => onSave(draft)}>{t(language, 'editor.save')}</button> : null}
           </div>
         ) : null}
       </div>
-      {document ? <textarea value={draft} onChange={(event) => setDraft(event.target.value)} /> : null}
-      {!document && selection.kind === 'export' ? (
-        <>
-          <p>{t(language, 'editor.exportsHint')}</p>
-        </>
+      {document ? (
+        <textarea value={draft} onChange={(event) => setDraft(event.target.value)} readOnly={document.readOnly} />
       ) : null}
-      {!document && selection.kind !== 'export' ? <p>{t(language, 'editor.noEditableDocument')}</p> : null}
+      {!document ? <p>{t(language, 'editor.noEditableDocument')}</p> : null}
     </section>
   );
 }

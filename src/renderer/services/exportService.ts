@@ -36,10 +36,8 @@ export function buildSummaryExport(summary: SummaryData): string {
 }
 
 export function buildExportFiles(title: string, chapters: ChapterInput[], summary: SummaryData): ProjectFileWrite[] {
-  return [
-    { relativePath: 'exports/novel.txt', content: buildNovelExport(title, chapters) },
-    { relativePath: 'exports/summary.md', content: buildSummaryExport(summary) }
-  ];
+  void summary;
+  return [{ relativePath: 'exports/novel.txt', content: buildNovelExport(title, chapters) }];
 }
 
 export type ExportWriteResult = 'written' | 'preview';

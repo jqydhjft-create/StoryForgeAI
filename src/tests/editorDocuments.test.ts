@@ -49,6 +49,25 @@ describe('editorDocuments', () => {
     expect(document?.content).toContain('Find the road home');
   });
 
+  it('maps the summary selection to a read-only summary document', () => {
+    const document = getEditableDocument(
+      {
+        ...project,
+        summary: {
+          timeline: [{ event: 'Opening', time: 'Day 1', chapter: 1 }],
+          locations: [],
+          characters: []
+        }
+      },
+      { kind: 'summary', id: 'summary' }
+    );
+
+    expect(document?.title).toBe('Story Summary');
+    expect(document?.readOnly).toBe(true);
+    expect(document?.content).toContain('Total characters: 19');
+    expect(document?.content).toContain('Opening');
+  });
+
   it('applies edited world JSON to project state', () => {
     const nextProject = applyEditableDocument(
       project,

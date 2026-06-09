@@ -2,7 +2,15 @@ import { mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { afterEach, describe, expect, it } from 'vitest';
-import { createProject, createProjectInParent, deleteCharacterFile, loadProject, toProjectFolderName } from '../main/projectStore';
+import {
+  createProject,
+  createProjectInParent,
+  deleteChapterFile,
+  deleteCharacterFile,
+  loadProject,
+  saveProjectFile,
+  toProjectFolderName
+} from '../main/projectStore';
 
 let cleanupPath = '';
 
@@ -28,6 +36,22 @@ describe('projectStore', () => {
     expect(project.rootPath).toBe(join(cleanupPath, 'Ash-Road'));
     expect(project.settings.name).toBe('Ash Road');
     expect(await readFile(join(cleanupPath, 'Ash-Road', 'settings.json'), 'utf8')).toContain('Ash Road');
+  });
+
+  it('creates unnamed projects without demo story copy', async () => {
+    cleanupPath = await mkdtemp(join(tmpdir(), 'storyforge-'));
+
+    const project = await createProjectInParent(cleanupPath, '');
+    const settings = await readFile(join(cleanupPath, 'Untitled-Story', 'settings.json'), 'utf8');
+    const world = await readFile(join(cleanupPath, 'Untitled-Story', 'world', 'bible.json'), 'utf8');
+    const chapter = await readFile(join(cleanupPath, 'Untitled-Story', 'chapters', '01.md'), 'utf8');
+    const serialized = [settings, world, chapter].join('\n');
+
+    expect(project.settings.name).toBe('Untitled Story');
+    expect(serialized).not.toContain('Ash Road');
+    expect(serialized).not.toContain('荒原守望者');
+    expect(serialized).not.toContain('阿砾');
+    expect(serialized).not.toContain('米洛');
   });
 
   it('creates a project with required files', async () => {
@@ -89,6 +113,25 @@ describe('projectStore', () => {
     await deleteCharacterFile(projectPath, 'ash');
 
     await expect(stat(join(projectPath, 'characters', 'ash.json'))).rejects.toThrow();
+  });
+
+  it('deletes a chapter file by numeric chapter id', async () => {
+    cleanupPath = await mkdtemp(join(tmpdir(), 'storyforge-'));
+    const projectPath = join(cleanupPath, 'AshRoad');
+    await createProject(projectPath, 'Ash Road');
+
+    await deleteChapterFile(projectPath, 1);
+
+    await expect(stat(join(projectPath, 'chapters', '01.md'))).rejects.toThrow();
+  });
+
+  it('rejects project file writes outside the project root', async () => {
+    cleanupPath = await mkdtemp(join(tmpdir(), 'storyforge-'));
+    const projectPath = join(cleanupPath, 'AshRoad');
+    await createProject(projectPath, 'Ash Road');
+
+    await expect(saveProjectFile(projectPath, '../escape.txt', 'bad')).rejects.toThrow('Invalid project file path');
+    await expect(stat(join(cleanupPath, 'escape.txt'))).rejects.toThrow();
   });
 
   it('reports corrupt JSON without replacing it', async () => {

@@ -7,7 +7,6 @@ interface StartScreenProps {
   projectName: string;
   onProjectNameChange: (name: string) => void;
   onCreateProject: () => void;
-  onCreateDemo: () => void;
   onOpenProject: () => void;
   error: string;
 }
@@ -18,7 +17,6 @@ export function StartScreen({
   projectName,
   onProjectNameChange,
   onCreateProject,
-  onCreateDemo,
   onOpenProject,
   error
 }: StartScreenProps) {
@@ -44,7 +42,6 @@ export function StartScreen({
         </label>
         <div className="start-actions">
           <button onClick={onCreateProject}>{t(language, 'start.createProject')}</button>
-          <button className="secondary" onClick={onCreateDemo}>{t(language, 'start.createDemo')}</button>
           <button className="secondary" onClick={onOpenProject}>
             {t(language, 'start.openProject')}
           </button>

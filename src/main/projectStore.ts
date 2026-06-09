@@ -1,5 +1,5 @@
 import { mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { isAbsolute, join, relative, resolve } from 'node:path';
 import {
   createDefaultChapterMeta,
   createDefaultSettings,
@@ -11,6 +11,18 @@ import type { CharacterProfile, ChapterMeta, PlotBeat, StoryProject, SummaryData
 
 async function writeJson(path: string, value: unknown): Promise<void> {
   await writeFile(path, formatJson(value), 'utf8');
+}
+
+function resolveProjectFilePath(projectPath: string, relativePath: string): string {
+  const projectRoot = resolve(projectPath);
+  const targetPath = resolve(projectRoot, relativePath);
+  const pathFromRoot = relative(projectRoot, targetPath);
+
+  if (!pathFromRoot || pathFromRoot.startsWith('..') || isAbsolute(pathFromRoot)) {
+    throw new Error('Invalid project file path');
+  }
+
+  return targetPath;
 }
 
 async function readJson<T>(projectPath: string, relativePath: string): Promise<T> {
@@ -104,7 +116,7 @@ export async function loadProject(projectPath: string): Promise<StoryProject> {
 }
 
 export async function saveProjectFile(projectPath: string, relativePath: string, content: string): Promise<void> {
-  await writeFile(join(projectPath, relativePath), content, 'utf8');
+  await writeFile(resolveProjectFilePath(projectPath, relativePath), content, 'utf8');
 }
 
 export async function deleteCharacterFile(projectPath: string, characterId: string): Promise<void> {
@@ -113,4 +125,12 @@ export async function deleteCharacterFile(projectPath: string, characterId: stri
   }
 
   await rm(join(projectPath, 'characters', `${characterId}.json`), { force: true });
+}
+
+export async function deleteChapterFile(projectPath: string, chapterId: number): Promise<void> {
+  if (!Number.isInteger(chapterId) || chapterId < 1) {
+    throw new Error('Invalid chapter id');
+  }
+
+  await rm(join(projectPath, 'chapters', `${String(chapterId).padStart(2, '0')}.md`), { force: true });
 }

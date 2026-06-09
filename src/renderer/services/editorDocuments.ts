@@ -1,4 +1,6 @@
 import type { CharacterProfile, PlotBeat, StoryProject, TreeNodeKind, WorldBible } from '../../shared/types.js';
+import { buildSummaryExport } from './exportService';
+import { countProjectCharacters } from './textMetrics';
 
 export interface EditorSelection {
   kind: TreeNodeKind;
@@ -9,6 +11,7 @@ export interface EditableDocument {
   title: string;
   relativePath: string;
   content: string;
+  readOnly?: boolean;
 }
 
 function formatChapterPath(id: number): string {
@@ -59,6 +62,15 @@ export function getEditableDocument(project: StoryProject, selection: EditorSele
       title: chapter.meta.title,
       relativePath: formatChapterPath(chapter.meta.id),
       content: chapter.content
+    };
+  }
+
+  if (selection.kind === 'summary') {
+    return {
+      title: 'Story Summary',
+      relativePath: 'chapters/meta.json',
+      content: `Total characters: ${countProjectCharacters(project)}\n\n${buildSummaryExport(project.summary)}`,
+      readOnly: true
     };
   }
 

@@ -1,4 +1,3 @@
-import { contextBridge, ipcRenderer } from 'electron';
 import type {
   AiConnectionTestResult,
   AiProviderConfigInput,
@@ -8,9 +7,10 @@ import type {
   StorySkillResponse
 } from '../shared/types.js';
 
+const { contextBridge, ipcRenderer } = require('electron');
+
 const api = {
-  createProject: (projectPath: string, name: string): Promise<StoryProject> =>
-    ipcRenderer.invoke('project:create', projectPath, name),
+  createProject: (projectPath: string, name: string): Promise<StoryProject> => ipcRenderer.invoke('project:create', projectPath, name),
   createProjectInParent: (parentPath: string, name: string): Promise<StoryProject> =>
     ipcRenderer.invoke('project:createInParent', parentPath, name),
   loadProject: (projectPath: string): Promise<StoryProject> => ipcRenderer.invoke('project:load', projectPath),
@@ -30,9 +30,3 @@ const api = {
 };
 
 contextBridge.exposeInMainWorld('storyforge', api);
-
-declare global {
-  interface Window {
-    storyforge: typeof api;
-  }
-}
