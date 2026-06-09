@@ -24,6 +24,10 @@ function normalizeSearchText(value: string): string {
   return value.normalize('NFKC').toLowerCase();
 }
 
+function shouldKeepKeyword(word: string): boolean {
+  return word.length > 3 || /[^\u0000-\u007f]/u.test(word);
+}
+
 function collectKeywords(target: string, anchors: Array<{ text: string }>, memory: StoryMemoryState): string[] {
   const source = [
     target,
@@ -31,9 +35,7 @@ function collectKeywords(target: string, anchors: Array<{ text: string }>, memor
     ...memory.foreshadowing.filter((item) => item.status === 'open').map((item) => item.text)
   ].join(' ');
 
-  return Array.from(new Set(normalizeSearchText(source).match(/[\p{L}\p{N}]+/gu) ?? [])).filter(
-    (word) => word.length > 3
-  );
+  return Array.from(new Set(normalizeSearchText(source).match(/[\p{L}\p{N}]+/gu) ?? [])).filter(shouldKeepKeyword);
 }
 
 function matchHistoryFragments(memory: StoryMemoryState, keywords: string[]) {

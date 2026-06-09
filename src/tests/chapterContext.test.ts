@@ -74,7 +74,7 @@ describe('chapterContext', () => {
     expect(JSON.stringify(packet)).not.toContain('A city stores memories in ledgers.');
   });
 
-  it('matches Chinese history fragments from Unicode keywords', () => {
+  it('matches Chinese history fragments from short Unicode keywords', () => {
     const actTimeline: ActTimeline = {
       acts: [
         { id: 'act-1', title: '第一幕', time: '第一天', location: '档案馆', characters: ['米拉'], movement: '寻找账本', summary: '米拉发现账本。' }
@@ -84,15 +84,15 @@ describe('chapterContext', () => {
       acts: [
         {
           actId: 'act-1',
-          summary: '米拉追查账本见证。',
+          summary: '米拉追查账本。',
           chapters: [
             {
               id: 'scene-2',
               actId: 'act-1',
               chapterId: 2,
-              target: '揭示账本见证',
+              target: '揭示 账本',
               scenes: [{ id: 's1', summary: '米拉核对证词。', characters: ['米拉'], location: '档案馆' }],
-              anchors: [{ id: 'anchor-1', text: '账本见证', actId: 'act-1', chapterId: 2 }]
+              anchors: [{ id: 'anchor-1', text: '账本', actId: 'act-1', chapterId: 2 }]
             }
           ]
         }
@@ -100,8 +100,8 @@ describe('chapterContext', () => {
     };
     const memory: StoryMemoryState = {
       characterStates: [{ name: '米拉', role: '档案员', status: '警觉' }],
-      foreshadowing: [{ id: 'f1', text: '账本见证', status: 'open' }],
-      recentEvents: [{ chapterId: 1, summary: '米拉确认账本见证仍然有效。' }],
+      foreshadowing: [{ id: 'f1', text: '账本', status: 'open' }],
+      recentEvents: [{ chapterId: 1, summary: '米拉确认账本仍然有效。' }],
       workingMemory: []
     };
 
@@ -115,7 +115,7 @@ describe('chapterContext', () => {
     });
 
     expect(packet.matchedHistoryFragments).toEqual([
-      { source: 'chapter-1', text: '米拉确认账本见证仍然有效。' }
+      { source: 'chapter-1', text: '米拉确认账本仍然有效。' }
     ]);
   });
 
