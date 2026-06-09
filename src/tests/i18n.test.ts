@@ -45,4 +45,12 @@ describe('i18n', () => {
     expect(t('en', 'assistant.nextChapter')).toBe('Generate current chapter content');
     expect(t('zh-CN', 'assistant.nextChapterReady')).toBe('本章内容已写入项目');
   });
+
+  it('translates workflow stage labels and actions', () => {
+    expect(t('en', 'workflow.stage.intake')).toBe('Intake');
+    expect(t('en', 'workflow.stage.world_outline')).toBe('World + Outline');
+    expect(t('en', 'workflow.confirm')).toBe('Confirm');
+    expect(t('en', 'workflow.regenerate')).toBe('Regenerate');
+    expect(t('zh-CN', 'workflow.forceSave')).toBe('强制保存');
+  });
 });

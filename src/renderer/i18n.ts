@@ -65,6 +65,20 @@ type TranslationKey =
   | 'assistant.testingAi'
   | 'assistant.retryFailedGate'
   | 'assistant.retryingFailedGate'
+  | 'workflow.stage.intake'
+  | 'workflow.stage.world_outline'
+  | 'workflow.stage.act_timeline'
+  | 'workflow.stage.scene_outline'
+  | 'workflow.stage.chapter_draft'
+  | 'workflow.stage.act_scoring'
+  | 'workflow.stage.full_review'
+  | 'workflow.confirm'
+  | 'workflow.regenerate'
+  | 'workflow.forceSave'
+  | 'workflow.generate'
+  | 'workflow.reviewBlocked'
+  | 'workflow.scoreAct'
+  | 'workflow.fullReview'
   | 'summary.timelineEntries'
   | 'summary.locations'
   | 'summary.characters'
@@ -148,6 +162,20 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     'assistant.testingAi': 'Testing AI...',
     'assistant.retryFailedGate': 'Retry failed gate',
     'assistant.retryingFailedGate': 'Retrying failed gate...',
+    'workflow.stage.intake': 'Intake',
+    'workflow.stage.world_outline': 'World + Outline',
+    'workflow.stage.act_timeline': 'Act Timeline',
+    'workflow.stage.scene_outline': 'Scene Outline',
+    'workflow.stage.chapter_draft': 'Chapter Drafting',
+    'workflow.stage.act_scoring': 'Act Scoring',
+    'workflow.stage.full_review': 'Full Review',
+    'workflow.confirm': 'Confirm',
+    'workflow.regenerate': 'Regenerate',
+    'workflow.forceSave': 'Force save',
+    'workflow.generate': 'Generate',
+    'workflow.reviewBlocked': 'Review blocked save',
+    'workflow.scoreAct': 'Score act',
+    'workflow.fullReview': 'Full review',
     'summary.timelineEntries': 'timeline entries',
     'summary.locations': 'locations',
     'summary.characters': 'characters',
@@ -230,6 +258,20 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     'assistant.testingAi': '正在测试 AI...',
     'assistant.retryFailedGate': '重试失败门禁',
     'assistant.retryingFailedGate': '正在重试失败门禁...',
+    'workflow.stage.intake': '前置引导',
+    'workflow.stage.world_outline': '世界观 + 总纲',
+    'workflow.stage.act_timeline': '幕级时间轴',
+    'workflow.stage.scene_outline': '细纲',
+    'workflow.stage.chapter_draft': '逐章生成',
+    'workflow.stage.act_scoring': '幕评分',
+    'workflow.stage.full_review': '整体审核',
+    'workflow.confirm': '确认',
+    'workflow.regenerate': '重新生成',
+    'workflow.forceSave': '强制保存',
+    'workflow.generate': '生成',
+    'workflow.reviewBlocked': '审核阻止保存',
+    'workflow.scoreAct': '幕评分',
+    'workflow.fullReview': '整体审核',
     'summary.timelineEntries': '条时间线',
     'summary.locations': '个地点',
     'summary.characters': '个人物',
