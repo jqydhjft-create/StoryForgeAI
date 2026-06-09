@@ -42,15 +42,29 @@ export function confirmWorkflowStage(
   stage: WorkflowStageId,
   confirmedAt = new Date().toISOString()
 ): StoryWorkflowState {
+  if (stage !== state.currentStage) {
+    throw new Error(`Cannot confirm stage ${stage} while current stage is ${state.currentStage}`);
+  }
+
+  const status = state.stages[stage].status;
+  if (status !== 'draft' && status !== 'regenerating') {
+    throw new Error(`Cannot confirm stage ${stage} with status ${status}`);
+  }
+
   const nextStage = findNextWorkflowStage(stage);
+  const stages: StoryWorkflowState['stages'] = {
+    ...state.stages,
+    [stage]: { ...state.stages[stage], status: 'confirmed', confirmedAt }
+  };
+
+  if (nextStage && state.stages[nextStage].status === 'locked') {
+    stages[nextStage] = { ...state.stages[nextStage], status: 'draft' };
+  }
+
   return {
     ...state,
     currentStage: nextStage ?? stage,
-    stages: {
-      ...state.stages,
-      [stage]: { ...state.stages[stage], status: 'confirmed', confirmedAt },
-      ...(nextStage ? { [nextStage]: { ...state.stages[nextStage], status: 'draft' as const } } : {})
-    }
+    stages
   };
 }
 
@@ -59,6 +73,11 @@ export function requestStageRegeneration(
   stage: WorkflowStageId,
   regeneratedAt = new Date().toISOString()
 ): StoryWorkflowState {
+  const status = state.stages[stage].status;
+  if (status === 'locked' || status === 'optional') {
+    throw new Error(`Cannot regenerate stage ${stage} with status ${status}`);
+  }
+
   return {
     ...state,
     currentStage: stage,
