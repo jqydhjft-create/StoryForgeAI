@@ -73,4 +73,98 @@ describe('chapterContext', () => {
     expect(packet.matchedHistoryFragments[0].text).toContain('ledger');
     expect(JSON.stringify(packet)).not.toContain('A city stores memories in ledgers.');
   });
+
+  it('matches Chinese history fragments from Unicode keywords', () => {
+    const actTimeline: ActTimeline = {
+      acts: [
+        { id: 'act-1', title: '第一幕', time: '第一天', location: '档案馆', characters: ['米拉'], movement: '寻找账本', summary: '米拉发现账本。' }
+      ]
+    };
+    const sceneOutline: SceneOutlineArtifact = {
+      acts: [
+        {
+          actId: 'act-1',
+          summary: '米拉追查账本见证。',
+          chapters: [
+            {
+              id: 'scene-2',
+              actId: 'act-1',
+              chapterId: 2,
+              target: '揭示账本见证',
+              scenes: [{ id: 's1', summary: '米拉核对证词。', characters: ['米拉'], location: '档案馆' }],
+              anchors: [{ id: 'anchor-1', text: '账本见证', actId: 'act-1', chapterId: 2 }]
+            }
+          ]
+        }
+      ]
+    };
+    const memory: StoryMemoryState = {
+      characterStates: [{ name: '米拉', role: '档案员', status: '警觉' }],
+      foreshadowing: [{ id: 'f1', text: '账本见证', status: 'open' }],
+      recentEvents: [{ chapterId: 1, summary: '米拉确认账本见证仍然有效。' }],
+      workingMemory: []
+    };
+
+    const packet = buildChapterContextPacket({
+      project: project(),
+      actTimeline,
+      sceneOutline,
+      memory,
+      actId: 'act-1',
+      chapterId: 2
+    });
+
+    expect(packet.matchedHistoryFragments).toEqual([
+      { source: 'chapter-1', text: '米拉确认账本见证仍然有效。' }
+    ]);
+  });
+
+  it('does not mutate source inputs when packet fields change', () => {
+    const actTimeline: ActTimeline = {
+      acts: [
+        { id: 'act-1', title: 'Original Act', time: 'Day 1', location: 'Archive', characters: ['Mira'], movement: 'Find ledger', summary: 'Mira finds the ledger.' }
+      ]
+    };
+    const sceneOutline: SceneOutlineArtifact = {
+      acts: [
+        {
+          actId: 'act-1',
+          summary: 'Mira finds the ledger.',
+          chapters: [
+            {
+              id: 'scene-2',
+              actId: 'act-1',
+              chapterId: 2,
+              target: 'Follow the ledger.',
+              scenes: [{ id: 's1', summary: 'Mira reads.', characters: ['Mira'], location: 'Archive' }],
+              anchors: [{ id: 'anchor-1', text: 'Original anchor', actId: 'act-1', chapterId: 2 }]
+            }
+          ]
+        }
+      ]
+    };
+    const memory: StoryMemoryState = {
+      characterStates: [{ name: 'Mira', role: 'Archivist', status: 'Original status' }],
+      foreshadowing: [{ id: 'f1', text: 'ledger', status: 'open' }],
+      recentEvents: [{ chapterId: 1, summary: 'Mira found the ledger.' }],
+      workingMemory: []
+    };
+
+    const packet = buildChapterContextPacket({
+      project: project(),
+      actTimeline,
+      sceneOutline,
+      memory,
+      actId: 'act-1',
+      chapterId: 2
+    });
+
+    packet.currentActOutline.title = 'Mutated Act';
+    packet.anchors[0]!.text = 'Mutated anchor';
+    packet.stateMachine.characterStates[0]!.status = 'Mutated status';
+
+    expect(actTimeline.acts[0]!.title).toBe('Original Act');
+    expect(sceneOutline.acts[0]!.chapters[0]!.anchors[0]!.text).toBe('Original anchor');
+    expect(memory.characterStates[0]!.status).toBe('Original status');
+  });
 });

@@ -15,6 +15,15 @@ interface ChapterContextInput {
   chapterId: number;
 }
 
+function cloneJsonData<T>(value: T): T {
+  if (value === undefined) return value;
+  return JSON.parse(JSON.stringify(value)) as T;
+}
+
+function normalizeSearchText(value: string): string {
+  return value.normalize('NFKC').toLowerCase();
+}
+
 function collectKeywords(target: string, anchors: Array<{ text: string }>, memory: StoryMemoryState): string[] {
   const source = [
     target,
@@ -22,13 +31,15 @@ function collectKeywords(target: string, anchors: Array<{ text: string }>, memor
     ...memory.foreshadowing.filter((item) => item.status === 'open').map((item) => item.text)
   ].join(' ');
 
-  return Array.from(new Set(source.toLowerCase().match(/[a-z0-9]+/g) ?? [])).filter((word) => word.length > 3);
+  return Array.from(new Set(normalizeSearchText(source).match(/[\p{L}\p{N}]+/gu) ?? [])).filter(
+    (word) => word.length > 3
+  );
 }
 
 function matchHistoryFragments(memory: StoryMemoryState, keywords: string[]) {
   if (keywords.length === 0) return [];
   return memory.recentEvents
-    .filter((event) => keywords.some((keyword) => event.summary.toLowerCase().includes(keyword)))
+    .filter((event) => keywords.some((keyword) => normalizeSearchText(event.summary).includes(keyword)))
     .map((event) => ({ source: `chapter-${event.chapterId}`, text: event.summary }));
 }
 
@@ -57,19 +68,19 @@ export function buildChapterContextPacket(input: ChapterContextInput): ChapterCo
 
   return {
     currentChapterTarget: chapterOutline.target,
-    currentActOutline: currentAct,
-    anchors: chapterOutline.anchors,
-    stateMachine: {
+    currentActOutline: cloneJsonData(currentAct),
+    anchors: cloneJsonData(chapterOutline.anchors),
+    stateMachine: cloneJsonData({
       characterStates: input.memory.characterStates,
       foreshadowing: input.memory.foreshadowing,
       locationStates: input.memory.locationStates,
       objectStates: input.memory.objectStates,
       activeWorldRules: input.memory.activeWorldRules,
       openConflicts: input.memory.openConflicts
-    },
+    }),
     previousActSummary,
     currentActSummary,
-    recentChapterTexts,
-    matchedHistoryFragments: matchHistoryFragments(input.memory, keywords)
+    recentChapterTexts: cloneJsonData(recentChapterTexts),
+    matchedHistoryFragments: cloneJsonData(matchHistoryFragments(input.memory, keywords))
   };
 }
