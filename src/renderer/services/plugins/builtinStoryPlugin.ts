@@ -51,8 +51,18 @@ export function createBuiltinStoryPlugin(runner: StorySkillRunner): StoryPlugin 
   return {
     id: 'builtin-story-plugin',
     capabilities: {
+      generate_initial_brief: (input) => runMappedSkill(runner, 'theme-generator', input),
+      generate_world_and_outline: async (input) => {
+        const worldDocument = await runMappedSkill(runner, 'world-generator', input);
+        const masterOutline = await runMappedSkill(runner, 'plot-designer', { input, worldDocument });
+        return { worldDocument, masterOutline };
+      },
+      generate_act_timeline: (input) => runMappedSkill(runner, 'plot-designer', input),
+      generate_scene_outline: (input) => runMappedSkill(runner, 'plot-designer', input),
       write_chapter: (input) => runMappedSkill(runner, 'next-chapter-workshop', input),
-      review_chapter: async (input) => normalizeReviewOutput(await runMappedSkill(runner, 'logic-detective', input))
+      review_chapter: async (input) => normalizeReviewOutput(await runMappedSkill(runner, 'logic-detective', input)),
+      score_act: (input) => runMappedSkill(runner, 'integrated-gate', input),
+      review_full_text: (input) => runMappedSkill(runner, 'integrated-gate', input)
     }
   };
 }

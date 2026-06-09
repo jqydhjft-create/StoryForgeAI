@@ -3,7 +3,7 @@ import type { StorySkillRequest, StorySkillResponse } from '../shared/types';
 import { createBuiltinStoryPlugin } from '../renderer/services/plugins/builtinStoryPlugin';
 
 describe('builtinStoryPlugin', () => {
-  it('advertises only concrete implemented capabilities', () => {
+  it('advertises concrete workflow and chapter capabilities', () => {
     const runner = async (request: StorySkillRequest): Promise<StorySkillResponse> => ({
       skillId: request.skillId,
       provider: 'mock',
@@ -12,7 +12,43 @@ describe('builtinStoryPlugin', () => {
 
     const plugin = createBuiltinStoryPlugin(runner);
 
-    expect(Object.keys(plugin.capabilities).sort()).toEqual(['review_chapter', 'write_chapter']);
+    expect(Object.keys(plugin.capabilities).sort()).toEqual([
+      'generate_act_timeline',
+      'generate_initial_brief',
+      'generate_scene_outline',
+      'generate_world_and_outline',
+      'review_chapter',
+      'review_full_text',
+      'score_act',
+      'write_chapter'
+    ]);
+  });
+
+  it('maps stage generation, scoring, and full review to existing story skills', async () => {
+    const calls: StorySkillRequest[] = [];
+    const runner = async (request: StorySkillRequest): Promise<StorySkillResponse> => {
+      calls.push(request);
+      return { skillId: request.skillId, provider: 'mock', output: { status: 'passed', summary: request.skillId } };
+    };
+
+    const plugin = createBuiltinStoryPlugin(runner);
+
+    await plugin.capabilities.generate_initial_brief?.({ idea: 'A city of memories.' });
+    await plugin.capabilities.generate_world_and_outline?.({ initialSettingBook: {} });
+    await plugin.capabilities.generate_act_timeline?.({ worldOutline: {} });
+    await plugin.capabilities.generate_scene_outline?.({ actTimeline: {} });
+    await plugin.capabilities.score_act?.({ actId: 'act-1' });
+    await plugin.capabilities.review_full_text?.({ chapters: [] });
+
+    expect(calls.map((call) => call.skillId)).toEqual([
+      'theme-generator',
+      'world-generator',
+      'plot-designer',
+      'plot-designer',
+      'plot-designer',
+      'integrated-gate',
+      'integrated-gate'
+    ]);
   });
 
   it('maps write_chapter to the existing next-chapter workshop skill', async () => {
