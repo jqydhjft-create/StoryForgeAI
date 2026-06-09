@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { ChapterContextPacket, ChapterReviewReport } from '../shared/types';
+import type { ChapterContextPacket, ChapterReviewReport, StorySkillRequest, StorySkillResponse } from '../shared/types';
+import { createBuiltinStoryPlugin } from '../renderer/services/plugins/builtinStoryPlugin';
 import type { StoryPlugin } from '../renderer/services/plugins/storyPluginTypes';
 import { createStoryPluginRegistry } from '../renderer/services/plugins/storyPluginRegistry';
 import {
@@ -96,5 +97,39 @@ describe('chapterDraftWorkflow', () => {
     await expect(generateReviewedChapterDraft(createStoryPluginRegistry([plugin]), packet())).rejects.toThrow(
       'review_chapter did not return a valid review report'
     );
+  });
+
+  it('generates a ready-to-save draft through the built-in plugin registry with legacy review output', async () => {
+    const runner = async (request: StorySkillRequest): Promise<StorySkillResponse> => {
+      if (request.skillId === 'next-chapter-workshop') {
+        return {
+          skillId: request.skillId,
+          provider: 'mock',
+          output: {
+            chapter: {
+              meta: { id: 2, title: 'Chapter 2', sceneCount: 1, characters: ['Mira'], locations: ['Archive'], timelineDay: 2 },
+              content: '# Chapter 2\n\nMira reads the ledger.'
+            }
+          }
+        };
+      }
+
+      if (request.skillId === 'logic-detective') {
+        return {
+          skillId: request.skillId,
+          provider: 'mock',
+          output: { status: 'passed', summary: 'No continuity issue.' }
+        };
+      }
+
+      throw new Error(`Unexpected skill ${request.skillId}`);
+    };
+
+    const registry = createStoryPluginRegistry([createBuiltinStoryPlugin(runner)]);
+
+    const result = await generateReviewedChapterDraft(registry, packet());
+
+    expect(result.saveDecision).toBe('ready_to_save');
+    expect(result.review).toEqual({ status: 'passed', summary: 'No continuity issue.', issues: [] });
   });
 });

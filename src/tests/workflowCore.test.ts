@@ -78,6 +78,23 @@ describe('workflowCore', () => {
     expect(next.stages.world_outline.status).toBe('draft');
   });
 
+  it('invalidates downstream required stages when confirming a regenerated stage', () => {
+    const intakeConfirmed = confirmWorkflowStage(createInitialWorkflowState(), 'intake', '2026-06-09T00:00:00.000Z');
+    const worldConfirmed = confirmWorkflowStage(intakeConfirmed, 'world_outline', '2026-06-09T00:30:00.000Z');
+    const actConfirmed = confirmWorkflowStage(worldConfirmed, 'act_timeline', '2026-06-09T01:00:00.000Z');
+    const regenerating = requestStageRegeneration(actConfirmed, 'world_outline', '2026-06-09T02:00:00.000Z');
+
+    const next = confirmWorkflowStage(regenerating, 'world_outline', '2026-06-09T03:00:00.000Z');
+
+    expect(next.stages.world_outline.status).toBe('confirmed');
+    expect(next.stages.act_timeline.status).toBe('draft');
+    expect(next.currentStage).toBe('act_timeline');
+    expect(next.stages.scene_outline.status).toBe('locked');
+    expect(next.stages.chapter_draft.status).toBe('locked');
+    expect(next.stages.act_scoring.status).toBe('locked');
+    expect(next.stages.full_review.status).toBe('optional');
+  });
+
   it('throws when regenerating a locked stage', () => {
     const state = createInitialWorkflowState();
 

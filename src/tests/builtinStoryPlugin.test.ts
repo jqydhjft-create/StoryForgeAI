@@ -60,6 +60,29 @@ describe('builtinStoryPlugin', () => {
     const result = await plugin.capabilities.review_chapter?.({ chapterId: 2, content: 'Mira reads.' });
 
     expect(calls[0].skillId).toBe('logic-detective');
-    expect(result).toEqual({ status: 'passed', summary: 'No continuity issue.' });
+    expect(result).toEqual({ status: 'passed', summary: 'No continuity issue.', issues: [] });
+  });
+
+  it('normalizes legacy failed logic detective output to a chapter review report', async () => {
+    const runner = async (request: StorySkillRequest): Promise<StorySkillResponse> => ({
+      skillId: request.skillId,
+      provider: 'mock',
+      output: { status: 'failed' }
+    });
+
+    const plugin = createBuiltinStoryPlugin(runner);
+    const result = await plugin.capabilities.review_chapter?.({ chapterId: 2, content: 'Mira reads.' });
+
+    expect(result).toEqual({
+      status: 'issues_found',
+      summary: 'Legacy review did not include a summary.',
+      issues: [
+        {
+          id: 'legacy-logic-detective',
+          severity: 'error',
+          message: 'Legacy review did not include a summary.'
+        }
+      ]
+    });
   });
 });

@@ -1,4 +1,4 @@
-export type TreeNodeKind = 'world' | 'character' | 'plot' | 'chapter' | 'summary';
+export type TreeNodeKind = 'world' | 'character' | 'plot' | 'chapter' | 'export' | 'summary';
 
 export interface StoryConcept {
   title: string;

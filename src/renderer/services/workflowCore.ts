@@ -57,8 +57,16 @@ export function confirmWorkflowStage(
     [stage]: { ...state.stages[stage], status: 'confirmed', confirmedAt }
   };
 
-  if (nextStage && state.stages[nextStage].status === 'locked') {
-    stages[nextStage] = { ...state.stages[nextStage], status: 'draft' };
+  if (nextStage) {
+    if (status === 'regenerating') {
+      const nextStageIndex = orderedRequiredStages.indexOf(nextStage);
+      stages[nextStage] = { status: 'draft' };
+      for (const downstreamStage of orderedRequiredStages.slice(nextStageIndex + 1)) {
+        stages[downstreamStage] = { status: 'locked' };
+      }
+    } else if (state.stages[nextStage].status === 'locked') {
+      stages[nextStage] = { ...state.stages[nextStage], status: 'draft' };
+    }
   }
 
   return {

@@ -3,7 +3,8 @@ import type {
   ActTimeline,
   ChapterContextPacket,
   StoryPluginCapability,
-  StoryWorkflowState
+  StoryWorkflowState,
+  TreeNodeKind
 } from '../shared/types';
 
 describe('workflow contracts', () => {
@@ -70,5 +71,11 @@ describe('workflow contracts', () => {
     const capability: StoryPluginCapability = 'write_chapter';
 
     expect(capability).toBe('write_chapter');
+  });
+
+  it('accepts both legacy export and summary tree node kinds', () => {
+    const kinds: TreeNodeKind[] = ['export', 'summary'];
+
+    expect(kinds).toEqual(['export', 'summary']);
   });
 });
