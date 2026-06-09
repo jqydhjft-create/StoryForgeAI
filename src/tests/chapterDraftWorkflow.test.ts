@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { ChapterContextPacket, ChapterReviewReport } from '../shared/types';
 import type { StoryPlugin } from '../renderer/services/plugins/storyPluginTypes';
 import { createStoryPluginRegistry } from '../renderer/services/plugins/storyPluginRegistry';
@@ -57,5 +57,44 @@ describe('chapterDraftWorkflow', () => {
 
   it('allows normal save after a passing review', () => {
     expect(confirmDraftSave({ status: 'passed', summary: 'Clean.', issues: [] })).toEqual({ allowed: true, reason: 'review_passed' });
+  });
+
+  it('rejects malformed write output before review', async () => {
+    const reviewChapter = vi.fn(async (): Promise<ChapterReviewReport> => ({
+      status: 'passed',
+      summary: 'Clean.',
+      issues: []
+    }));
+    const plugin: StoryPlugin = {
+      id: 'test-plugin',
+      capabilities: {
+        write_chapter: async () => ({}),
+        review_chapter: reviewChapter
+      }
+    };
+
+    await expect(generateReviewedChapterDraft(createStoryPluginRegistry([plugin]), packet())).rejects.toThrow(
+      'write_chapter did not return a chapter'
+    );
+    expect(reviewChapter).not.toHaveBeenCalled();
+  });
+
+  it('rejects malformed review output', async () => {
+    const plugin: StoryPlugin = {
+      id: 'test-plugin',
+      capabilities: {
+        write_chapter: async () => ({
+          chapter: {
+            meta: { id: 2, title: 'Chapter 2', sceneCount: 1, characters: ['Mira'], locations: ['Archive'], timelineDay: 2 },
+            content: '# Chapter 2\n\nMira reads the ledger.'
+          }
+        }),
+        review_chapter: async () => ({ status: 'passed', summary: 'Missing issues' })
+      }
+    };
+
+    await expect(generateReviewedChapterDraft(createStoryPluginRegistry([plugin]), packet())).rejects.toThrow(
+      'review_chapter did not return a valid review report'
+    );
   });
 });

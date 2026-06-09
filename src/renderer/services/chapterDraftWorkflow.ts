@@ -10,6 +10,42 @@ export interface ReviewedChapterDraft {
   saveDecision: DraftSaveDecision;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isValidReviewIssue(value: unknown): boolean {
+  if (!isRecord(value)) return false;
+  const hasValidLocation = value.location === undefined || typeof value.location === 'string';
+  return (
+    typeof value.id === 'string' &&
+    (value.severity === 'info' || value.severity === 'warning' || value.severity === 'error') &&
+    typeof value.message === 'string' &&
+    hasValidLocation
+  );
+}
+
+function validateWriteResult(value: unknown): { chapter: unknown } {
+  if (!isRecord(value) || !('chapter' in value)) {
+    throw new Error('write_chapter did not return a chapter');
+  }
+  return { chapter: value.chapter };
+}
+
+function validateReviewReport(value: unknown): ChapterReviewReport {
+  if (
+    !isRecord(value) ||
+    (value.status !== 'passed' && value.status !== 'issues_found') ||
+    typeof value.summary !== 'string' ||
+    !Array.isArray(value.issues) ||
+    !value.issues.every(isValidReviewIssue)
+  ) {
+    throw new Error('review_chapter did not return a valid review report');
+  }
+
+  return value as unknown as ChapterReviewReport;
+}
+
 export function confirmDraftSave(review: ChapterReviewReport) {
   if (review.status === 'passed') {
     return { allowed: true, reason: 'review_passed' as const };
@@ -28,11 +64,11 @@ export async function generateReviewedChapterDraft(
   registry: StoryPluginRegistry,
   contextPacket: ChapterContextPacket
 ): Promise<ReviewedChapterDraft> {
-  const draft = await registry.invoke<ChapterContextPacket, { chapter: unknown }>('write_chapter', contextPacket);
-  const review = await registry.invoke<{ contextPacket: ChapterContextPacket; chapter: unknown }, ChapterReviewReport>('review_chapter', {
+  const draft = validateWriteResult(await registry.invoke<ChapterContextPacket, unknown>('write_chapter', contextPacket));
+  const review = validateReviewReport(await registry.invoke<{ contextPacket: ChapterContextPacket; chapter: unknown }, unknown>('review_chapter', {
     contextPacket,
     chapter: draft.chapter
-  });
+  }));
 
   return {
     status: 'reviewed',
