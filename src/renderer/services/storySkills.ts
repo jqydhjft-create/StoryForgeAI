@@ -197,9 +197,14 @@ export function buildStorySkillRequest(skillId: StorySkillId, userPrompt: string
 }
 
 export function createDesktopSkillRunner(): StorySkillRunner | undefined {
-  if (typeof window === 'undefined' || !window.storyforge?.runSkill) {
+  const storyforge =
+    typeof window === 'undefined'
+      ? undefined
+      : (window.storyforge as (typeof window.storyforge & { runSkill?: StorySkillRunner }) | undefined);
+
+  if (!storyforge?.runSkill) {
     return undefined;
   }
 
-  return (request) => window.storyforge.runSkill(request);
+  return (request) => storyforge.runSkill?.(request) ?? Promise.reject(new Error('Desktop skill runner is unavailable'));
 }

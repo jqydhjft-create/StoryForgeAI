@@ -14,6 +14,8 @@ type TranslationKey =
   | 'editor.character'
   | 'editor.plot'
   | 'editor.summary'
+  | 'editor.exports'
+  | 'editor.exportsHint'
   | 'editor.noEditableDocument'
   | 'editor.save'
   | 'editor.saved'
@@ -95,6 +97,8 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     'editor.character': 'Character',
     'editor.plot': 'Beat Sheet',
     'editor.summary': 'Story Summary',
+    'editor.exports': 'Exports',
+    'editor.exportsHint': 'Use the assistant export tab to write Markdown and TXT files.',
     'editor.noEditableDocument': 'No editable document for this selection.',
     'editor.save': 'Save',
     'editor.saved': 'Saved',
@@ -175,6 +179,8 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     'editor.character': '人物档案',
     'editor.plot': '情节蓝图',
     'editor.summary': '故事摘要',
+    'editor.exports': '导出',
+    'editor.exportsHint': '使用助手导出标签写入 Markdown 和 TXT 文件。',
     'editor.noEditableDocument': '当前选择没有可编辑文档。',
     'editor.save': '保存',
     'editor.saved': '已保存',
