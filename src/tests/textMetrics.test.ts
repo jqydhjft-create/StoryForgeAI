@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { StoryProject } from '../shared/types';
+import { createInitialWorkflowState } from '../shared/workflowDefaults';
 import { countProjectCharacters, countTextCharacters } from '../renderer/services/textMetrics';
 
 describe('textMetrics', () => {
@@ -14,7 +15,8 @@ describe('textMetrics', () => {
         { meta: { id: 1, title: 'One', sceneCount: 1, characters: [], locations: [], timelineDay: 1 }, content: '# One\n\nabc def' },
         { meta: { id: 2, title: 'Two', sceneCount: 1, characters: [], locations: [], timelineDay: 2 }, content: '# Two\n\n中文 内容' }
       ],
-      summary: { timeline: [], locations: [], characters: [] }
+      summary: { timeline: [], locations: [], characters: [] },
+      workflow: createInitialWorkflowState()
     };
 
     expect(countTextCharacters('a b\nc')).toBe(3);

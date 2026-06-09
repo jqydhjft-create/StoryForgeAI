@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ActTimeline, SceneOutlineArtifact, StoryProject, StoryMemoryState } from '../shared/types';
+import { createInitialWorkflowState } from '../shared/workflowDefaults';
 import { buildChapterContextPacket } from '../renderer/services/chapterContext';
 
 function project(): StoryProject {
@@ -14,7 +15,8 @@ function project(): StoryProject {
       { meta: { id: 2, title: 'Chapter 2', sceneCount: 1, characters: ['Mira'], locations: ['Archive'], timelineDay: 2 }, content: '# Chapter 2\n\nSecond text.' },
       { meta: { id: 3, title: 'Chapter 3', sceneCount: 1, characters: ['Mira'], locations: ['Vault'], timelineDay: 3 }, content: '# Chapter 3\n\nThird text.' }
     ],
-    summary: { timeline: [], locations: [], characters: [] }
+    summary: { timeline: [], locations: [], characters: [] },
+    workflow: createInitialWorkflowState()
   };
 }
 

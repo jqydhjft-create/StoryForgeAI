@@ -60,6 +60,7 @@ export interface StoryProject {
   plot: PlotBeat[];
   chapters: Array<{ meta: ChapterMeta; content: string }>;
   summary: SummaryData;
+  workflow: StoryWorkflowState;
 }
 
 export interface ProjectFileWrite {

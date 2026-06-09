@@ -7,7 +7,8 @@ import {
   createDefaultWorld,
   formatJson
 } from '../shared/templates.js';
-import type { CharacterProfile, ChapterMeta, PlotBeat, StoryProject, SummaryData, WorldBible } from '../shared/types.js';
+import { createInitialWorkflowState } from '../shared/workflowDefaults.js';
+import type { CharacterProfile, ChapterMeta, PlotBeat, StoryProject, StoryWorkflowState, SummaryData, WorldBible } from '../shared/types.js';
 
 async function writeJson(path: string, value: unknown): Promise<void> {
   await writeFile(path, formatJson(value), 'utf8');
@@ -49,12 +50,24 @@ async function loadIndividualCharacters(projectPath: string): Promise<CharacterP
   );
 }
 
+async function loadWorkflowState(projectPath: string): Promise<StoryWorkflowState> {
+  try {
+    return await readJson<StoryWorkflowState>(projectPath, 'workflow/state.json');
+  } catch (error) {
+    if (typeof error === 'object' && error !== null && 'code' in error && error.code === 'ENOENT') {
+      return createInitialWorkflowState();
+    }
+    throw error;
+  }
+}
+
 export async function createProject(projectPath: string, name: string): Promise<StoryProject> {
   await mkdir(join(projectPath, 'world'), { recursive: true });
   await mkdir(join(projectPath, 'characters', 'supporting'), { recursive: true });
   await mkdir(join(projectPath, 'plot'), { recursive: true });
   await mkdir(join(projectPath, 'chapters'), { recursive: true });
   await mkdir(join(projectPath, 'exports'), { recursive: true });
+  await mkdir(join(projectPath, 'workflow'), { recursive: true });
 
   const settings = createDefaultSettings(name);
   const world = createDefaultWorld();
@@ -71,6 +84,7 @@ export async function createProject(projectPath: string, name: string): Promise<
   await writeJson(join(projectPath, 'chapters', 'meta.json'), { chapters: chapterMeta, summaryCache: summary });
   await writeFile(join(projectPath, 'chapters', '01.md'), '# Chapter 1\n\n', 'utf8');
   await writeFile(join(projectPath, 'exports', 'summary.md'), '', 'utf8');
+  await writeJson(join(projectPath, 'workflow', 'state.json'), createInitialWorkflowState());
 
   return loadProject(projectPath);
 }
@@ -97,6 +111,7 @@ export async function loadProject(projectPath: string): Promise<StoryProject> {
   const individualCharacters = await loadIndividualCharacters(projectPath);
   const plot = await readJson<PlotBeat[]>(projectPath, 'plot/beat_sheet.json');
   const metaFile = await readJson<{ chapters: ChapterMeta[]; summaryCache: SummaryData }>(projectPath, 'chapters/meta.json');
+  const workflow = await loadWorkflowState(projectPath);
   const chapters = await Promise.all(
     metaFile.chapters.map(async (meta) => ({
       meta,
@@ -111,7 +126,8 @@ export async function loadProject(projectPath: string): Promise<StoryProject> {
     characters: [...protagonist, ...antagonist, ...individualCharacters],
     plot,
     chapters,
-    summary: metaFile.summaryCache
+    summary: metaFile.summaryCache,
+    workflow
   };
 }
 

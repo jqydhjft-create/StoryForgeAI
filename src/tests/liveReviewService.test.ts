@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { StoryProject } from '../shared/types';
+import { createInitialWorkflowState } from '../shared/workflowDefaults';
 import { runLightReview } from '../renderer/services/liveReviewService';
 
 const project: StoryProject = {
@@ -18,7 +19,8 @@ const project: StoryProject = {
       content: '# Library\n\nThey enter the library and find the hidden book again.'
     }
   ],
-  summary: { timeline: [], locations: [], characters: [] }
+  summary: { timeline: [], locations: [], characters: [] },
+  workflow: createInitialWorkflowState()
 };
 
 describe('liveReviewService', () => {

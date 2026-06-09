@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { StoryProject, StorySkillRequest, StorySkillResponse } from '../shared/types';
+import { createInitialWorkflowState } from '../shared/workflowDefaults';
 import {
   buildNextChapterContextPacket,
   runNextChapterWorkflow
@@ -46,7 +47,8 @@ const project: StoryProject = {
     timeline: [{ event: '阿砾发现米洛', time: 'Day 1', chapter: 1 }],
     locations: [{ name: '废弃礼拜堂', firstAppearance: 'Chapter 1', scenes: ['1.1'] }],
     characters: [{ name: '阿砾', firstChapter: 1, lastChapter: 1, statusChange: '开始守护米洛' }]
-  }
+  },
+  workflow: createInitialWorkflowState()
 };
 
 describe('nextChapterWorkflow', () => {

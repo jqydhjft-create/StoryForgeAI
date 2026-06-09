@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildExportFiles, buildNovelExport, buildSummaryExport, writeProjectExports } from '../renderer/services/exportService';
+import { createInitialWorkflowState } from '../shared/workflowDefaults';
 
 describe('exportService', () => {
   it('merges chapters into novel text', () => {
@@ -53,7 +54,8 @@ describe('exportService', () => {
             content: '# Chapel\n\nOpening.'
           }
         ],
-        summary: { timeline: [], locations: [], characters: [] }
+        summary: { timeline: [], locations: [], characters: [] },
+        workflow: createInitialWorkflowState()
       },
       { timeline: [], locations: [], characters: [] },
       async (projectPath, relativePath, content) => {

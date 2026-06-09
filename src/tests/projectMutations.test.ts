@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { StoryProject } from '../shared/types';
+import { createInitialWorkflowState } from '../shared/workflowDefaults';
 import { generateStorySeed } from '../renderer/services/mockAiService';
 import { runStoryWorkflow } from '../renderer/services/storyWorkflow';
 import {
@@ -36,7 +37,8 @@ const project: StoryProject = {
       content: '# Chapel\n\nOpening text.'
     }
   ],
-  summary: { timeline: [], locations: [], characters: [] }
+  summary: { timeline: [], locations: [], characters: [] },
+  workflow: createInitialWorkflowState()
 };
 
 describe('projectMutations', () => {
