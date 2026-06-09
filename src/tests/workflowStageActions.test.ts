@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { StoryPlugin } from '../renderer/services/plugins/storyPluginTypes';
+import type { StorySkillRequest, StorySkillResponse } from '../shared/types';
+import { createBuiltinStoryPlugin } from '../renderer/services/plugins/builtinStoryPlugin';
 import { createStoryPluginRegistry } from '../renderer/services/plugins/storyPluginRegistry';
 import { generateStageArtifact } from '../renderer/services/workflowStageActions';
 
@@ -109,5 +111,43 @@ describe('workflowStageActions', () => {
       'score_act',
       'review_full_text'
     ]);
+  });
+
+  it('adapts built-in story skill outputs into validated workflow artifacts', async () => {
+    const runner = async (request: StorySkillRequest): Promise<StorySkillResponse> => {
+      const outputs = {
+        'theme-generator': {
+          title: 'Memory Ledgers',
+          protagonist: 'Mira',
+          goal: 'Find the missing ledger',
+          conflict: 'Truth versus safety',
+          themes: ['Uneasy wonder', 'Archives remember debts']
+        },
+        'world-generator': {
+          genre: 'Mystery',
+          premise: 'Memories are stored in ledgers.',
+          rules: ['Ledgers can be edited only at dawn.'],
+          terms: { Ledger: 'A memory record.' }
+        },
+        'plot-designer': {
+          plot: [{ id: 'opening', label: 'Opening', summary: 'Mira finds the ledger.', chapterHint: 2 }]
+        },
+        'integrated-gate': {
+          status: 'passed',
+          summary: 'Solid.'
+        }
+      } as const;
+
+      return { skillId: request.skillId, provider: 'mock', output: outputs[request.skillId as keyof typeof outputs] };
+    };
+
+    const registry = createStoryPluginRegistry([createBuiltinStoryPlugin(runner)]);
+
+    expect((await generateStageArtifact(registry, 'intake', { idea: 'Memory ledgers.' })).genre).toBe('Mystery');
+    expect((await generateStageArtifact(registry, 'world_outline', {})).masterOutline).toContain('Opening');
+    expect((await generateStageArtifact(registry, 'act_timeline', {})).acts[0].id).toBe('opening');
+    expect((await generateStageArtifact(registry, 'scene_outline', {})).acts[0].chapters[0].target).toContain('Mira');
+    expect((await generateStageArtifact(registry, 'act_scoring', { actId: 'act-1' })).plotContinuity).toBe(8);
+    expect((await generateStageArtifact(registry, 'full_review', {})).status).toBe('passed');
   });
 });

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { StoryWorkflowState, WorkflowStageId } from '../../shared/types.js';
 import type { Language } from '../i18n';
 import { t } from '../i18n';
@@ -47,13 +47,19 @@ export function WorkflowPanel({
   onFullReview
 }: WorkflowPanelProps) {
   const [selectedStage, setSelectedStage] = useState<WorkflowStageId>(workflow.currentStage);
+
+  useEffect(() => {
+    setSelectedStage(workflow.currentStage);
+  }, [workflow.currentStage]);
+
   const effectiveStage = workflow.stages[selectedStage] ? selectedStage : workflow.currentStage;
   const stageState = workflow.stages[effectiveStage];
   const isLocked = stageState.status === 'locked';
   const isChapterStage = effectiveStage === 'chapter_draft';
   const isScoringStage = effectiveStage === 'act_scoring';
   const isFullReviewStage = effectiveStage === 'full_review';
-  const canRunStage = !isLocked && !isChapterStage;
+  const usesDedicatedControls = isChapterStage || isScoringStage || isFullReviewStage;
+  const canRunStage = !isLocked && !usesDedicatedControls;
   const previewText = useMemo(() => activeArtifactText || '{}', [activeArtifactText]);
 
   return (
@@ -95,19 +101,19 @@ export function WorkflowPanel({
         ) : null}
         {isChapterStage ? (
           <>
-            <button onClick={onGenerateChapter} disabled={isBusy} type="button">
+            <button onClick={onGenerateChapter} disabled={isBusy || isLocked} type="button">
               {t(language, 'workflow.generate')}
             </button>
-            <button onClick={() => onConfirmStage(effectiveStage)} disabled={isBusy} type="button">
+            <button onClick={() => onConfirmStage(effectiveStage)} disabled={isBusy || isLocked} type="button">
               {t(language, 'workflow.confirm')}
             </button>
-            <button className="secondary" onClick={onForceSaveChapter} disabled={isBusy} type="button">
+            <button className="secondary" onClick={onForceSaveChapter} disabled={isBusy || isLocked} type="button">
               {t(language, 'workflow.forceSave')}
             </button>
           </>
         ) : null}
         {isScoringStage ? (
-          <button onClick={onScoreAct} disabled={isBusy} type="button">
+          <button onClick={onScoreAct} disabled={isBusy || isLocked} type="button">
             {t(language, 'workflow.scoreAct')}
           </button>
         ) : null}

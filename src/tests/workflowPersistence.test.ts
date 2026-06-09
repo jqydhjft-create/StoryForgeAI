@@ -53,4 +53,16 @@ describe('workflow persistence', () => {
     expect(loaded.workflow.currentStage).toBe('world_outline');
     expect(loaded.workflow.stages.intake.status).toBe('confirmed');
   });
+
+  it('repairs malformed persisted workflow state', async () => {
+    cleanupPath = await mkdtemp(join(tmpdir(), 'storyforge-workflow-'));
+    const projectPath = join(cleanupPath, 'Story');
+    await createProject(projectPath, 'Workflow Story');
+    await saveProjectFile(projectPath, 'workflow/state.json', JSON.stringify({ currentStage: 'intake', stages: {} }));
+
+    const loaded = await loadProject(projectPath);
+
+    expect(loaded.workflow.currentStage).toBe('intake');
+    expect(loaded.workflow.stages.world_outline.status).toBe('locked');
+  });
 });

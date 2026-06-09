@@ -3,6 +3,7 @@ import type {
   AiConnectionTestResult,
   AiProviderConfigInput,
   AiProviderStatus,
+  ChapterReviewReport,
   ProjectFileWrite,
   StoryProject,
   SummaryData,
@@ -40,6 +41,7 @@ import { generateStageArtifact } from './services/workflowStageActions';
 import {
   buildWorkflowStateFile,
   confirmWorkflowArtifact,
+  recordWorkflowChapterReview,
   requestWorkflowRegeneration,
   type WorkflowProjectMutation
 } from './services/workflowMutations';
@@ -395,6 +397,21 @@ export function App() {
     setWorkflowStatus('');
     try {
       const artifact = await generateStageArtifact(createWorkflowRegistry(), stage, buildWorkflowStageInput(stage, project));
+      if (stage === 'act_scoring') {
+        await applyWorkflowProjectMutation(confirmWorkflowArtifact(project, stage, artifact));
+        return;
+      }
+      if (stage === 'full_review') {
+        const workflow = {
+          ...project.workflow,
+          artifacts: { ...project.workflow.artifacts, fullReview: artifact as ChapterReviewReport }
+        };
+        await applyWorkflowProjectMutation({
+          project: { ...project, workflow },
+          files: [buildWorkflowStateFile(workflow)]
+        });
+        return;
+      }
       setWorkflowDrafts((current) => ({ ...current, [stage]: artifact }));
       setWorkflowStatus(t(language, 'assistant.draftReady'));
     } catch (event) {
@@ -494,22 +511,13 @@ export function App() {
     }
 
     const chapterMutation = replaceChapterWithDraft(project, chapter);
-    const workflow = {
-      ...chapterMutation.project.workflow,
-      artifacts: {
-        ...chapterMutation.project.workflow.artifacts,
-        chapterReviews: {
-          ...chapterMutation.project.workflow.artifacts.chapterReviews,
-          [chapter.meta.id]: pendingWorkflowChapterDraft.review
-        }
-      }
-    };
+    const reviewMutation = recordWorkflowChapterReview(chapterMutation.project, chapter.meta.id, pendingWorkflowChapterDraft.review);
 
     setPendingWorkflowChapterDraft(null);
     await applyProjectMutation({
       ...chapterMutation,
-      project: { ...chapterMutation.project, workflow },
-      files: [...chapterMutation.files, buildWorkflowStateFile(workflow)]
+      project: reviewMutation.project,
+      files: [...chapterMutation.files, ...reviewMutation.files]
     });
     setWorkflowStatus(t(language, 'editor.saved'));
   }

@@ -8,7 +8,17 @@ import {
   formatJson
 } from '../shared/templates.js';
 import { createInitialWorkflowState } from '../shared/workflowDefaults.js';
-import type { CharacterProfile, ChapterMeta, PlotBeat, StoryProject, StoryWorkflowState, SummaryData, WorldBible } from '../shared/types.js';
+import type {
+  CharacterProfile,
+  ChapterMeta,
+  PlotBeat,
+  StoryProject,
+  StoryWorkflowState,
+  SummaryData,
+  WorkflowStageId,
+  WorkflowStageStatus,
+  WorldBible
+} from '../shared/types.js';
 
 async function writeJson(path: string, value: unknown): Promise<void> {
   await writeFile(path, formatJson(value), 'utf8');
@@ -50,9 +60,37 @@ async function loadIndividualCharacters(projectPath: string): Promise<CharacterP
   );
 }
 
+const workflowStages: WorkflowStageId[] = [
+  'intake',
+  'world_outline',
+  'act_timeline',
+  'scene_outline',
+  'chapter_draft',
+  'act_scoring',
+  'full_review'
+];
+const workflowStatuses: WorkflowStageStatus[] = ['locked', 'draft', 'confirmed', 'regenerating', 'optional'];
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isWorkflowState(value: unknown): value is StoryWorkflowState {
+  if (!isRecord(value) || !workflowStages.includes(value.currentStage as WorkflowStageId) || !isRecord(value.stages)) {
+    return false;
+  }
+  const stages = value.stages;
+
+  return workflowStages.every((stage) => {
+    const state = stages[stage];
+    return isRecord(state) && workflowStatuses.includes(state.status as WorkflowStageStatus);
+  });
+}
+
 async function loadWorkflowState(projectPath: string): Promise<StoryWorkflowState> {
   try {
-    return await readJson<StoryWorkflowState>(projectPath, 'workflow/state.json');
+    const workflow = await readJson<unknown>(projectPath, 'workflow/state.json');
+    return isWorkflowState(workflow) ? workflow : createInitialWorkflowState();
   } catch (error) {
     if (typeof error === 'object' && error !== null && 'code' in error && error.code === 'ENOENT') {
       return createInitialWorkflowState();

@@ -1,5 +1,6 @@
 import type {
   ActScoreReport,
+  ChapterReviewReport,
   ProjectFileWrite,
   StoryProject,
   StoryWorkflowArtifacts,
@@ -172,6 +173,47 @@ export function requestWorkflowRegeneration(
     },
     stage
   );
+  const nextProject = {
+    ...project,
+    workflow
+  };
+
+  return {
+    project: nextProject,
+    files: buildWorkflowFiles(workflow)
+  };
+}
+
+function allOutlinedChaptersReviewed(workflow: StoryWorkflowState): boolean {
+  const outlinedChapterIds =
+    workflow.artifacts.sceneOutline?.acts.flatMap((act) => act.chapters.map((chapter) => chapter.chapterId)) ?? [];
+  if (outlinedChapterIds.length === 0) {
+    return false;
+  }
+
+  return outlinedChapterIds.every((chapterId) => workflow.artifacts.chapterReviews?.[chapterId]);
+}
+
+export function recordWorkflowChapterReview(
+  project: StoryProject,
+  chapterId: number,
+  review: ChapterReviewReport,
+  confirmedAt = new Date().toISOString()
+): WorkflowProjectMutation {
+  const workflowWithReview: StoryWorkflowState = {
+    ...project.workflow,
+    artifacts: {
+      ...project.workflow.artifacts,
+      chapterReviews: {
+        ...project.workflow.artifacts.chapterReviews,
+        [chapterId]: cloneJson(review)
+      }
+    }
+  };
+  const workflow =
+    workflowWithReview.currentStage === 'chapter_draft' && allOutlinedChaptersReviewed(workflowWithReview)
+      ? confirmWorkflowStage(workflowWithReview, 'chapter_draft', confirmedAt)
+      : workflowWithReview;
   const nextProject = {
     ...project,
     workflow
