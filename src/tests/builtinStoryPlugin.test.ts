@@ -3,6 +3,18 @@ import type { StorySkillRequest, StorySkillResponse } from '../shared/types';
 import { createBuiltinStoryPlugin } from '../renderer/services/plugins/builtinStoryPlugin';
 
 describe('builtinStoryPlugin', () => {
+  it('advertises only concrete implemented capabilities', () => {
+    const runner = async (request: StorySkillRequest): Promise<StorySkillResponse> => ({
+      skillId: request.skillId,
+      provider: 'mock',
+      output: {}
+    });
+
+    const plugin = createBuiltinStoryPlugin(runner);
+
+    expect(Object.keys(plugin.capabilities).sort()).toEqual(['review_chapter', 'write_chapter']);
+  });
+
   it('maps write_chapter to the existing next-chapter workshop skill', async () => {
     const calls: StorySkillRequest[] = [];
     const runner = async (request: StorySkillRequest): Promise<StorySkillResponse> => {
