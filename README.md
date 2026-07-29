@@ -221,7 +221,6 @@ src/
   tests/                        # Vitest 单元与工作流回归测试
 docs/
   api/                          # 工作流分析、接口与设计说明
-  superpowers/specs/            # 已记录的设计规格
 benchmark-output/               # 历史真实模型 A/B 审计证据
 ```
 
@@ -238,10 +237,5 @@ git diff --check
 
 仓库保留了统一工作流与旧流程的真实模型 A/B 盲评材料和结构化基准产物。它们用于验证统一链路的质量与兼容性；日常开发或界面改动不需要重复执行高成本的真实模型批量评测。
 
-更多技术背景可参阅：
-
-- [工作流原理与历史问题分析](docs/api/workflow-analysis.md)
-- [统一工作流入口与旧项目迁移设计](docs/superpowers/specs/2026-07-27-unified-entrypoint-legacy-migration-design.md)
-- [工作流 UI 交互设计](docs/superpowers/specs/2026-07-28-workflow-ui-interaction-design.md)
-- [真实模型 A/B 盲评记录表](docs/benchmark-real-model-evaluation.md)
+项目源码、运行方式和数据边界均以本 README 为准；内部开发设计记录不随项目发布。
 
