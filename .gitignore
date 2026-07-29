@@ -4,6 +4,7 @@ dist-electron/
 coverage/
 .vite/
 .superpowers/
+.worktrees/
 .tools/
 node-v*-win-x64.zip
 *.log
