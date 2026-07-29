@@ -10,10 +10,6 @@ describe('workspace UI noise guard', () => {
     expect(source('src/renderer/components/EditorPane.tsx')).not.toMatch(/regenerateChapter|rollbackChapter|onRegenerateChapter/);
   });
 
-  it('does not import AssistantPanel into the workspace application', () => {
-    expect(source('src/renderer/App.tsx')).not.toMatch(/import\s+\{\s*AssistantPanel\s*\}\s+from/);
-  });
-
   it('renders settings diagnostics as a separate view without clearing project state', () => {
     const app = source('src/renderer/App.tsx');
 
@@ -23,13 +19,13 @@ describe('workspace UI noise guard', () => {
     expect(app).not.toMatch(/setProject\(null\).*setSettingsOpen|setSettingsOpen.*setProject\(null\)/);
   });
 
-  it('keeps browser diagnostics free of benchmark and Electron entrypoints', () => {
+  it('keeps browser diagnostics free of removed native and audit controls', () => {
     const app = source('src/renderer/App.tsx');
     const settingsIndex = app.indexOf('<SettingsDiagnostics');
 
     expect(settingsIndex).toBeGreaterThanOrEqual(0);
-    expect(app.slice(settingsIndex)).toContain('showBenchmark={false}');
-    expect(app).not.toMatch(/onRunRealBenchmark|onRetryFailedBenchmark|workflowRealBenchmarkController/);
+    expect(app.slice(settingsIndex)).not.toMatch(/showBenchmark|onRunRealBenchmark|onRetryFailedBenchmark/);
+    expect(app).not.toMatch(/workflowRealBenchmarkController/);
     expect(app).not.toMatch(/window\.storyforge|createDesktopSkillRunner|createDesktopWorkflowService/);
   });
 

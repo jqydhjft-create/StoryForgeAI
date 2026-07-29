@@ -32,7 +32,7 @@ describe('workflow entrypoint guard', () => {
     expect(service).not.toContain('createSkillStoryPlugin(runner), createMockStoryPlugin()');
   });
 
-  it('keeps the browser renderer free of Electron-only entrypoints', () => {
+  it('keeps the browser renderer free of native-only entrypoints', () => {
     const app = source('src/renderer/App.tsx');
 
     for (const forbidden of [

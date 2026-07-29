@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 const root = resolve(import.meta.dirname, '../..');
 
 describe('web build configuration', () => {
-  it('exposes explicit browser, desktop, and compatible build commands', async () => {
+  it('exposes only Web/PWA build commands', async () => {
     const packageJson = JSON.parse(await readFile(resolve(root, 'package.json'), 'utf8')) as {
       scripts: Record<string, string>;
     };
@@ -13,7 +13,8 @@ describe('web build configuration', () => {
     expect(packageJson.scripts['dev:web']).toMatch(/vite/);
     expect(packageJson.scripts['build:web']).toMatch(/typecheck/);
     expect(packageJson.scripts['build:web']).toMatch(/vite build/);
-    expect(packageJson.scripts['build:desktop']).toMatch(/tsc -p tsconfig\.node\.json/);
+    expect(packageJson.scripts['dev:electron']).toBeUndefined();
+    expect(packageJson.scripts['build:desktop']).toBeUndefined();
     expect(packageJson.scripts.build).toBe('npm run build:web');
   });
 

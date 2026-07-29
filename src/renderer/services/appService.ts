@@ -7,7 +7,7 @@ import type {
 import type { BrowserProjectBackup, BrowserProjectStore } from './browser/browserProjectStore.js';
 import type { WorkflowService } from './workflowService.js';
 
-/** Runtime boundary consumed by the renderer, independent of Electron globals. */
+/** Runtime boundary consumed by the browser renderer. */
 export interface AppService {
   projectStore: BrowserProjectStore;
   createProject(name: string): Promise<StoryProject>;

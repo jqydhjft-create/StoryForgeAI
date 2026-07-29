@@ -11,7 +11,6 @@ export interface StartScreenProps {
   storyIdea: string;
   onStoryIdeaChange: (idea: string) => void;
   onCreateProject: () => void;
-  onOpenProject?: () => void;
   error: string;
   localProjects?: Array<Pick<StoryProject, 'rootPath' | 'settings'>>;
   onOpenLocalProject?: (rootPath: string) => void;
@@ -27,7 +26,6 @@ export function StartScreen({
   storyIdea,
   onStoryIdeaChange,
   onCreateProject,
-  onOpenProject,
   error,
   localProjects,
   onOpenLocalProject,
@@ -104,11 +102,6 @@ export function StartScreen({
         </label>
         <div className="start-actions">
           <button className="primary" onClick={onCreateProject}>{t(language, 'start.createProject')}</button>
-          {onOpenProject ? (
-            <button className="secondary" onClick={onOpenProject}>
-              {t(language, 'start.openProject')}
-            </button>
-          ) : null}
         </div>
         {onImportProject ? (
           <>

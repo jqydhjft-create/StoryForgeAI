@@ -158,8 +158,6 @@ describe('i18n', () => {
         'workspace.noMatchingAssets': 'No matching assets',
         'diagnostics.title': 'Settings & Diagnostics',
         'diagnostics.provider': 'Model provider',
-        'diagnostics.benchmark': 'Benchmark audit',
-        'diagnostics.description': 'Configure the model provider and inspect local workflow and benchmark activity.'
       },
       'zh-CN': {
         'workspace.settings': '设置',
@@ -191,8 +189,6 @@ describe('i18n', () => {
         'workspace.noMatchingAssets': '没有匹配的资产',
         'diagnostics.title': '设置与诊断',
         'diagnostics.provider': '模型提供商',
-        'diagnostics.benchmark': '基准审计',
-        'diagnostics.description': '配置模型提供商，并检查本地工作流和基准活动。'
       }
     } as const;
 

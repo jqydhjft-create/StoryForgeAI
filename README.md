@@ -48,15 +48,6 @@ npm test
 npm run build:web
 ```
 
-### 可选的桌面构建
-
-Electron 桌面壳仍保留给需要桌面文件系统工作流的开发者。它不是浏览器版本的运行前提：
-
-```powershell
-npm run build:desktop
-npx electron .
-```
-
 ## 使用方式
 
 1. 创建项目，填写项目名称和故事灵感。
@@ -197,8 +188,6 @@ sequenceDiagram
 
 ```text
 src/
-  main/                         # 可选 Electron 主进程与 IPC
-  preload/                      # 可选桌面壳暴露的 API
   renderer/
     App.tsx                     # UI 编排与工作流操作入口
     components/                 # 创作工作区、上下文栏、设置与审计界面
@@ -221,7 +210,6 @@ src/
   tests/                        # Vitest 单元与工作流回归测试
 docs/
   api/                          # 工作流分析、接口与设计说明
-benchmark-output/               # 历史真实模型 A/B 审计证据
 ```
 
 ## 验证与审计
@@ -234,8 +222,6 @@ npm test
 npm run build:web
 git diff --check
 ```
-
-仓库保留了统一工作流与旧流程的真实模型 A/B 盲评材料和结构化基准产物。它们用于验证统一链路的质量与兼容性；日常开发或界面改动不需要重复执行高成本的真实模型批量评测。
 
 项目源码、运行方式和数据边界均以本 README 为准；内部开发设计记录不随项目发布。
 

@@ -112,18 +112,10 @@ describe('StartScreen browser project controls', () => {
     expect(html).not.toContain('Delete project');
   });
 
-  it('does not render the desktop folder-opening control when it is not supplied', () => {
-    const { onOpenProject: _onOpenProject, ...browserProps } = baseProps;
-
-    const html = renderToStaticMarkup(createElement(StartScreen, browserProps));
-
-    expect(html).not.toContain('Open project');
-  });
-
-  it('renders the desktop folder-opening control for legacy callers that supply it', () => {
+  it('does not render a native folder-opening control', () => {
     const html = renderToStaticMarkup(createElement(StartScreen, baseProps));
 
-    expect(html).toContain('Open project');
+    expect(html).not.toContain('Open project');
   });
 
   it('renders local-project actions only when browser props are supplied', () => {

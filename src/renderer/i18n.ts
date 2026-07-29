@@ -79,7 +79,6 @@ type TranslationKey =
   | 'assistant.exportsReady'
   | 'assistant.exportsOpened'
   | 'assistant.openExportsFolder'
-  | 'assistant.openExportsUnavailable'
   | 'assistant.exportFailed'
   | 'assistant.seedApplied'
   | 'assistant.seedFailed'
@@ -179,7 +178,6 @@ type TranslationKey =
   | 'workspace.noMatchingAssets'
   | 'diagnostics.title'
   | 'diagnostics.provider'
-  | 'diagnostics.benchmark'
   | 'diagnostics.description'
   | 'settings.clearApiKey'
   | 'provider.configured'
@@ -202,7 +200,6 @@ type TranslationKey =
   | 'app.unableToApplyAiConfig'
   | 'app.unableToClearApiKey'
   | 'browser.corsHint'
-  | 'error.desktopApiUnavailable'
   | 'error.openProject'
   | 'error.createProject';
 
@@ -237,7 +234,7 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     'language.label': 'Language',
     'language.english': 'English',
     'language.chinese': 'Simplified Chinese',
-    'start.title': 'Desktop story workspace',
+    'start.title': 'Story workspace',
     'start.storyIdea': 'Story idea',
     'start.storyIdeaPlaceholder': 'A sentence that captures the heart of your story...',
     'starter.title': 'Getting started',
@@ -312,7 +309,6 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     'assistant.exportsReady': 'Exports are ready in the preview',
     'assistant.exportsOpened': 'Exports folder opened',
     'assistant.openExportsFolder': 'Open exports folder',
-    'assistant.openExportsUnavailable': 'Create or open a desktop project to open exports',
     'assistant.exportFailed': 'Export failed',
     'assistant.seedApplied': 'Starter assets saved to the project',
     'assistant.seedFailed': 'Unable to save starter assets',
@@ -386,8 +382,7 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     'workspace.noMatchingAssets': 'No matching assets',
     'diagnostics.title': 'Settings & Diagnostics',
     'diagnostics.provider': 'Model provider',
-    'diagnostics.benchmark': 'Benchmark audit',
-    'diagnostics.description': 'Configure the model provider and inspect local workflow and benchmark activity.',
+    'diagnostics.description': 'Configure the model provider and inspect local workflow activity.',
     'settings.clearApiKey': 'Clear API key',
     'provider.configured': 'configured',
     'provider.notConfigured': 'not configured',
@@ -409,7 +404,6 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     'app.unableToApplyAiConfig': 'Unable to apply AI config',
     'app.unableToClearApiKey': 'Unable to clear API key',
     'browser.corsHint': 'Your model endpoint must allow browser CORS requests.',
-    'error.desktopApiUnavailable': 'Desktop API is not available in this preview.',
     'error.openProject': 'Unable to open project.',
     'error.createProject': 'Unable to create project.'
   },
@@ -539,7 +533,6 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     'assistant.exportsReady': '导出内容已在预览中准备好',
     'assistant.exportsOpened': '已打开导出文件夹',
     'assistant.openExportsFolder': '打开导出文件夹',
-    'assistant.openExportsUnavailable': '请先创建或打开桌面项目',
     'assistant.exportFailed': '导出失败',
     'assistant.seedApplied': '起始资产已保存到项目',
     'assistant.seedFailed': '无法保存起始资产',
@@ -613,9 +606,7 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     'workspace.noMatchingAssets': '没有匹配的资产',
     'diagnostics.title': '设置与诊断',
     'diagnostics.provider': '模型提供商',
-    'diagnostics.benchmark': '基准审计',
-    'diagnostics.description': '配置模型提供商，并检查本地工作流和基准活动。',
-    'error.desktopApiUnavailable': '当前预览无法使用桌面 API。',
+    'diagnostics.description': '配置模型提供商并检查本地工作流活动。',
     'error.openProject': '无法打开项目。',
     'error.createProject': '无法创建项目。'
   }

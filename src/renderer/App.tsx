@@ -59,7 +59,7 @@ export function startModelRunTicker(onTick: (now: number) => void): () => void {
 }
 
 export interface AppProps {
-  /** Allows the browser service boundary to be exercised without Electron globals. */
+  /** Allows the browser service boundary to be exercised with a test service. */
   appService?: AppService;
 }
 
@@ -803,7 +803,6 @@ export function App({ appService: suppliedAppService }: AppProps = {}) {
         onTestAiConnection={testAiConnection}
         onClearApiKey={() => void clearAiConfig()}
         workflowLog={workflowLog}
-        showBenchmark={false}
         onBack={() => setSettingsOpen(false)}
       />
     );

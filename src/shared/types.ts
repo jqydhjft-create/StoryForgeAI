@@ -130,13 +130,6 @@ export interface AiProviderConfigInput {
   baseUrl: string;
 }
 
-export interface WorkflowBenchmarkRunRequest {
-  provider: 'deepseek';
-  model: 'deepseek-v4-pro';
-  temperature: number;
-  maxTokens: number;
-}
-
 export type WorkflowStageId =
   | 'intake'
   | 'world_outline'
