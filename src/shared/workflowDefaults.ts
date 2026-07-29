@@ -1,4 +1,15 @@
-import type { StoryWorkflowState } from './types.js';
+import type { StoryWorkflowState, WorkflowStageId } from './types.js';
+
+export const workflowStageIds = [
+  'intake',
+  'world_outline',
+  'character_bible',
+  'act_timeline',
+  'scene_outline',
+  'chapter_draft',
+  'act_scoring',
+  'full_review'
+] as const satisfies readonly WorkflowStageId[];
 
 export function createInitialWorkflowState(): StoryWorkflowState {
   return {

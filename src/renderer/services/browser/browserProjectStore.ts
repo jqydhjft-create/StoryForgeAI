@@ -5,7 +5,7 @@ import {
   createDefaultWorld
 } from '../../../shared/templates.js';
 import type { StoryProject } from '../../../shared/types.js';
-import { createInitialWorkflowState } from '../../../shared/workflowDefaults.js';
+import { createInitialWorkflowState, workflowStageIds } from '../../../shared/workflowDefaults.js';
 import { openBrowserDatabase } from './browserDb.js';
 
 const BACKUP_FORMAT = 'storyforge-browser-project';
@@ -94,7 +94,6 @@ function isSummary(value: unknown): boolean {
   );
 }
 
-const workflowStages = ['intake', 'world_outline', 'act_timeline', 'scene_outline', 'chapter_draft', 'act_scoring', 'full_review'];
 const workflowStatuses = ['locked', 'draft', 'confirmed', 'regenerating', 'optional'];
 
 function isWorkflowReport(value: unknown): boolean {
@@ -117,9 +116,9 @@ function isWorkflowArtifacts(value: unknown): boolean {
 }
 
 function isWorkflow(value: unknown): boolean {
-  if (!isRecord(value) || !workflowStages.includes(value.currentStage as string) || !isRecord(value.stages) || !isWorkflowArtifacts(value.artifacts) || !isRecord(value.memory)) return false;
+  if (!isRecord(value) || !workflowStageIds.includes(value.currentStage as typeof workflowStageIds[number]) || !isRecord(value.stages) || !isWorkflowArtifacts(value.artifacts) || !isRecord(value.memory)) return false;
   const stages = value.stages;
-  if (!workflowStages.every((stage) => isRecord(stages[stage]) && workflowStatuses.includes(stages[stage].status as string) && (stages[stage].confirmedAt === undefined || typeof stages[stage].confirmedAt === 'string') && (stages[stage].regeneratedAt === undefined || typeof stages[stage].regeneratedAt === 'string'))) return false;
+  if (!workflowStageIds.every((stage) => isRecord(stages[stage]) && workflowStatuses.includes(stages[stage].status as string) && (stages[stage].confirmedAt === undefined || typeof stages[stage].confirmedAt === 'string') && (stages[stage].regeneratedAt === undefined || typeof stages[stage].regeneratedAt === 'string'))) return false;
   const memory = value.memory;
   return Array.isArray(memory.characterStates) && memory.characterStates.every((state) => isRecord(state) && ['name', 'role', 'status'].every((key) => typeof state[key] === 'string')) && Array.isArray(memory.foreshadowing) && memory.foreshadowing.every((item) => isRecord(item) && typeof item.id === 'string' && typeof item.text === 'string' && ['open', 'echoed', 'resolved'].includes(item.status as string)) && (memory.locationStates === undefined || (Array.isArray(memory.locationStates) && memory.locationStates.every((item) => isRecord(item) && typeof item.name === 'string' && typeof item.status === 'string'))) && (memory.objectStates === undefined || (Array.isArray(memory.objectStates) && memory.objectStates.every((item) => isRecord(item) && typeof item.name === 'string' && typeof item.status === 'string'))) && (memory.activeWorldRules === undefined || isStringArray(memory.activeWorldRules)) && (memory.openConflicts === undefined || isStringArray(memory.openConflicts)) && Array.isArray(memory.recentEvents) && memory.recentEvents.every((item) => isRecord(item) && Number.isInteger(item.chapterId) && typeof item.summary === 'string') && isStringArray(memory.workingMemory);
 }

@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { closeBrowserDatabase, openBrowserDatabase } from '../renderer/services/browser/browserDb';
 import { createBrowserProjectStore } from '../renderer/services/browser/browserProjectStore';
+import { confirmWorkflowStage } from '../renderer/services/workflowCore';
 
 async function clearProjects(): Promise<void> {
   const database = await openBrowserDatabase();
@@ -37,6 +38,32 @@ describe('browserProjectStore', () => {
     expect(changed.workflow.currentStage).toBe('intake');
     await expect(store.load(changed.rootPath)).resolves.toEqual(changed);
     expect((await store.list()).map((project) => project.rootPath)).toEqual([changed.rootPath, newer.rootPath]);
+  });
+
+  it('persists the character stage unlocked after confirming a world outline', async () => {
+    const store = createBrowserProjectStore();
+    const project = await store.create('World outline');
+    const afterIntake = {
+      ...project,
+      workflow: confirmWorkflowStage(project.workflow, 'intake')
+    };
+    const afterWorldOutline = {
+      ...afterIntake,
+      workflow: confirmWorkflowStage(
+        {
+          ...afterIntake.workflow,
+          artifacts: {
+            ...afterIntake.workflow.artifacts,
+            worldOutline: { worldDocument: 'World document', masterOutline: 'Master outline' }
+          }
+        },
+        'world_outline'
+      )
+    };
+
+    expect(afterWorldOutline.workflow.currentStage).toBe('character_bible');
+    await store.save(afterWorldOutline);
+    await expect(store.load(afterWorldOutline.rootPath)).resolves.toEqual(afterWorldOutline);
   });
 
   it('exports portable backups without AI keys', async () => {

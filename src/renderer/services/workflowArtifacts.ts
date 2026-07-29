@@ -102,6 +102,33 @@ function normalizeSceneOutlineItem(value: unknown): SceneOutlineItem | null {
   };
 }
 
+function requiresGlobalChapterResequence(acts: SceneOutlineArtifact['acts']): boolean {
+  const chapterIds = acts.flatMap((act) => act.chapters.map((chapter) => chapter.chapterId));
+  return chapterIds.some((chapterId) => !Number.isInteger(chapterId) || chapterId <= 0) || new Set(chapterIds).size !== chapterIds.length;
+}
+
+function resequenceSceneOutlineChapters(acts: SceneOutlineArtifact['acts']): SceneOutlineArtifact['acts'] {
+  let nextChapterId = 1;
+
+  return acts.map((act) => ({
+    ...act,
+    chapters: act.chapters.map((chapter) => {
+      const originalChapterId = chapter.chapterId;
+      const chapterId = nextChapterId++;
+
+      return {
+        ...chapter,
+        chapterId,
+        anchors: chapter.anchors.map((anchor) => (
+          anchor.actId === act.actId && anchor.chapterId === originalChapterId
+            ? { ...anchor, chapterId }
+            : anchor
+        ))
+      };
+    })
+  }));
+}
+
 function normalizeActTimelineItem(value: unknown): ActTimelineItem | null {
   if (!isRecord(value)) {
     return null;
@@ -218,13 +245,11 @@ export function normalizeSceneOutline(value: unknown): SceneOutlineArtifact {
   }
 
   const normalizedActs = acts as SceneOutlineArtifact['acts'];
-  const chapterIds = normalizedActs.flatMap((act) => act.chapters.map((chapter) => chapter.chapterId));
-  if (new Set(chapterIds).size !== chapterIds.length) {
-    invalid('Scene outline chapter IDs must be globally unique');
-  }
 
   return {
-    acts: normalizedActs
+    acts: requiresGlobalChapterResequence(normalizedActs)
+      ? resequenceSceneOutlineChapters(normalizedActs)
+      : normalizedActs
   };
 }
 

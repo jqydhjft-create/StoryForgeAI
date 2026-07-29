@@ -58,20 +58,52 @@ describe('workflowArtifacts', () => {
     expect(() => normalizeActScoreReport({ actId: 'act-1', plotContinuity: 11 })).toThrow('Invalid act score');
   });
 
-  it('rejects scene outlines that reuse a chapter ID in a later act', () => {
-    expect(() => normalizeSceneOutline({
+  it('resequences repeated model chapter IDs globally and keeps matching anchors aligned', () => {
+    const outline = normalizeSceneOutline({
       acts: [
         {
           actId: 'act-1',
           summary: 'Opening act',
-          chapters: [{ id: 'chapter-1-1', actId: 'act-1', chapterId: 1, target: 'Open', scenes: [], anchors: [] }]
+          chapters: [{
+            id: 'chapter-1-1',
+            actId: 'act-1',
+            chapterId: 1,
+            target: 'Open',
+            scenes: [],
+            anchors: [
+              { id: 'anchor-1', text: 'Opening promise', actId: 'act-1', chapterId: 1 },
+              { id: 'anchor-external', text: 'Later payoff', actId: 'act-2', chapterId: 1 }
+            ]
+          }]
         },
         {
           actId: 'act-2',
           summary: 'Closing act',
-          chapters: [{ id: 'chapter-2-1', actId: 'act-2', chapterId: 1, target: 'Close', scenes: [], anchors: [] }]
+          chapters: [{
+            id: 'chapter-2-1',
+            actId: 'act-2',
+            chapterId: 1,
+            target: 'Close',
+            scenes: [],
+            anchors: [{ id: 'anchor-2', text: 'Closing payoff', actId: 'act-2', chapterId: 1 }]
+          }]
         }
       ]
-    })).toThrow('Scene outline chapter IDs must be globally unique');
+    });
+
+    expect(outline.acts.flatMap((act) => act.chapters.map((chapter) => chapter.chapterId))).toEqual([1, 2]);
+    expect(outline.acts[0]?.chapters[0]?.anchors).toEqual([
+      { id: 'anchor-1', text: 'Opening promise', actId: 'act-1', chapterId: 1 },
+      { id: 'anchor-external', text: 'Later payoff', actId: 'act-2', chapterId: 1 }
+    ]);
+    expect(outline.acts[1]?.chapters[0]?.anchors).toEqual([
+      { id: 'anchor-2', text: 'Closing payoff', actId: 'act-2', chapterId: 2 }
+    ]);
+  });
+
+  it('rejects structurally invalid scene outlines', () => {
+    expect(() => normalizeSceneOutline({
+      acts: [{ actId: 'act-1', summary: 'Opening act', chapters: [{ id: 'chapter-1', actId: 'act-1', chapterId: 1, target: 'Open', scenes: 'not-an-array', anchors: [] }] }]
+    })).toThrow('Invalid scene outline');
   });
 });
