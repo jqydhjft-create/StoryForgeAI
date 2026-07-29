@@ -17,6 +17,23 @@ function project(): StoryProject {
 }
 
 describe('workflowMutations', () => {
+  it('synchronizes confirmed character bible to project characters', () => {
+    const intake = confirmWorkflowArtifact(project(), 'intake', {
+      genre: 'Mystery', worldPremise: 'Memory ledgers.', protagonist: 'Mira', coreConflict: 'Truth versus safety',
+      readerFeeling: 'Uneasy wonder', targetLength: '80k', requiredElements: []
+    }).project;
+    const world = confirmWorkflowArtifact(intake, 'world_outline', { worldDocument: 'World', masterOutline: 'Outline' }).project;
+    const characters = [
+      { id: 'mira', name: 'Mira', role: 'Archivist', motivation: 'Recover the ledger', flaw: 'Distrusts allies', arc: 'Learns trust' }
+    ];
+
+    const result = confirmWorkflowArtifact(world, 'character_bible', characters);
+
+    expect(result.project.workflow.artifacts.characterBible).toEqual(characters);
+    expect(result.project.characters).toEqual(characters);
+    expect(result.project.workflow.currentStage).toBe('act_timeline');
+  });
+
   it('saves a confirmed intake artifact and unlocks world outline', () => {
     const result = confirmWorkflowArtifact(
       project(),
@@ -78,7 +95,10 @@ describe('workflowMutations', () => {
       '2026-06-09T00:00:00.000Z'
     ).project;
     const world = confirmWorkflowArtifact(intake, 'world_outline', { worldDocument: 'World', masterOutline: 'Outline' }).project;
-    const timeline = confirmWorkflowArtifact(world, 'act_timeline', {
+    const characters = confirmWorkflowArtifact(world, 'character_bible', [
+      { id: 'mira', name: 'Mira', role: 'Archivist', motivation: 'Recover the ledger', flaw: 'Distrusts allies', arc: 'Learns trust' }
+    ]).project;
+    const timeline = confirmWorkflowArtifact(characters, 'act_timeline', {
       acts: [{ id: 'act-1', title: 'Act 1', time: 'Day 1', location: 'Archive', characters: ['Mira'], movement: 'Find ledger', summary: 'Opening.' }]
     }).project;
     const outline = confirmWorkflowArtifact(timeline, 'scene_outline', {

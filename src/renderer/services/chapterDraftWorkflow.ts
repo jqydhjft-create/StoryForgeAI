@@ -25,11 +25,20 @@ function isValidReviewIssue(value: unknown): boolean {
   );
 }
 
-function validateWriteResult(value: unknown): { chapter: unknown } {
+function validateWriteResult(value: unknown, expectedChapterId: number): { chapter: unknown } {
   if (!isRecord(value) || !('chapter' in value)) {
     throw new Error('write_chapter did not return a chapter');
   }
-  return { chapter: value.chapter };
+
+  const chapter = value.chapter;
+  const meta = isRecord(chapter) && isRecord(chapter.meta) ? chapter.meta : undefined;
+  if (typeof meta?.id !== 'number') {
+    throw new Error(`write_chapter did not return a valid chapter ID for chapter ${expectedChapterId}`);
+  }
+  if (meta.id !== expectedChapterId) {
+    throw new Error(`write_chapter returned chapter ${meta.id}, expected ${expectedChapterId}`);
+  }
+  return { chapter };
 }
 
 function validateReviewReport(value: unknown): ChapterReviewReport {
@@ -64,7 +73,10 @@ export async function generateReviewedChapterDraft(
   registry: StoryPluginRegistry,
   contextPacket: ChapterContextPacket
 ): Promise<ReviewedChapterDraft> {
-  const draft = validateWriteResult(await registry.invoke<ChapterContextPacket, unknown>('write_chapter', contextPacket));
+  const draft = validateWriteResult(
+    await registry.invoke<ChapterContextPacket, unknown>('write_chapter', contextPacket),
+    contextPacket.chapterId
+  );
   const review = validateReviewReport(await registry.invoke<{ contextPacket: ChapterContextPacket; chapter: unknown }, unknown>('review_chapter', {
     contextPacket,
     chapter: draft.chapter

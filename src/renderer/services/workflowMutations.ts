@@ -17,10 +17,12 @@ export interface WorkflowProjectMutation {
 const orderedRequiredStages: WorkflowStageId[] = [
   'intake',
   'world_outline',
+  'character_bible',
   'act_timeline',
   'scene_outline',
   'chapter_draft',
-  'act_scoring'
+  'act_scoring',
+  'full_review'
 ];
 
 function cloneJson<T>(value: T): T {
@@ -58,6 +60,8 @@ function putArtifact(
       return { ...artifacts, initialSettingBook: cloneJson(artifact) as StoryWorkflowArtifacts['initialSettingBook'] };
     case 'world_outline':
       return { ...artifacts, worldOutline: cloneJson(artifact) as StoryWorkflowArtifacts['worldOutline'] };
+    case 'character_bible':
+      return { ...artifacts, characterBible: cloneJson(artifact) as StoryWorkflowArtifacts['characterBible'] };
     case 'act_timeline':
       return { ...artifacts, actTimeline: cloneJson(artifact) as StoryWorkflowArtifacts['actTimeline'] };
     case 'scene_outline':
@@ -95,6 +99,9 @@ function removeArtifactsForStages(
       case 'world_outline':
         delete next.worldOutline;
         break;
+      case 'character_bible':
+        delete next.characterBible;
+        break;
       case 'act_timeline':
         delete next.actTimeline;
         break;
@@ -102,7 +109,8 @@ function removeArtifactsForStages(
         delete next.sceneOutline;
         break;
       case 'act_scoring':
-        delete next.actScores;
+        // Preserve existing act scores on regeneration: individual
+        // scores are overwritten by putArtifact via [score.actId] merge.
         break;
       case 'full_review':
         delete next.fullReview;
@@ -151,6 +159,9 @@ export function confirmWorkflowArtifact(
   const workflow = confirmWorkflowStage(workflowWithArtifact, stage, confirmedAt);
   const nextProject = {
     ...project,
+    ...(stage === 'character_bible'
+      ? { characters: cloneJson(workflow.artifacts.characterBible ?? []) }
+      : {}),
     workflow
   };
 

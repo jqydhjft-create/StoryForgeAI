@@ -1,5 +1,5 @@
 import type { ChapterMeta, SummaryData } from '../../shared/types.js';
-import { buildStorySkillRequest, createDesktopSkillRunner, type StorySkillRunner } from './storySkills';
+import { buildStorySkillRequest, type StorySkillRunner } from './storySkillContracts';
 
 type ChapterInput = { meta: ChapterMeta; content: string };
 const summaryContentPreviewLimit = 500;
@@ -167,7 +167,7 @@ export async function runSummaryWorkflow(
 ): Promise<SummaryWorkflowResult> {
   const changeLog: string[] = [];
   const fallback = buildSummary(chapters);
-  const skillRunner = options.skillRunner ?? createDesktopSkillRunner();
+  const skillRunner = options.skillRunner;
 
   if (!skillRunner) {
     changeLog.push('Skill summary-ai 使用 mock：未配置模型 runner');

@@ -9,12 +9,10 @@ interface EditorPaneProps {
   document: EditableDocument | null;
   selection: TreeSelection;
   saveStatus: string;
-  canRegenerateChapter: boolean;
-  canRollbackChapter: boolean;
   onSave: (content: string) => void;
   onDirtyChange: (dirty: boolean) => void;
-  onRegenerateChapter: () => void;
-  onRollbackChapter: () => void;
+  onGenerateChapter?: () => void;
+  canGenerateChapter?: boolean;
 }
 
 export function EditorPane({
@@ -22,12 +20,10 @@ export function EditorPane({
   document,
   selection,
   saveStatus,
-  canRegenerateChapter,
-  canRollbackChapter,
   onSave,
   onDirtyChange,
-  onRegenerateChapter,
-  onRollbackChapter
+  onGenerateChapter,
+  canGenerateChapter
 }: EditorPaneProps) {
   const [draft, setDraft] = useState(document?.content ?? '');
 
@@ -51,28 +47,31 @@ export function EditorPane({
   return (
     <section className="editor-pane">
       <div className="editor-toolbar">
-        <h2>{title}</h2>
+        <div className="editor-toolbar-left">
+          <span className="editor-section-kind">{t(language, `tree.kind.${selection.kind}`)}</span>
+          <h2>{title}</h2>
+        </div>
         {document ? (
           <div className="editor-actions">
-            {saveStatus ? <span>{saveStatus}</span> : null}
-            {selection.kind === 'chapter' ? (
-              <>
-                <button onClick={onRegenerateChapter} disabled={!canRegenerateChapter}>
-                  {t(language, 'editor.regenerateChapter')}
-                </button>
-                <button onClick={onRollbackChapter} disabled={!canRollbackChapter}>
-                  {t(language, 'editor.rollbackChapter')}
-                </button>
-              </>
+            {canGenerateChapter && onGenerateChapter ? (
+              <button className="primary" onClick={onGenerateChapter}>{t(language, 'editor.generateChapter')}</button>
             ) : null}
-            {!document.readOnly ? <button onClick={() => onSave(draft)}>{t(language, 'editor.save')}</button> : null}
+            {saveStatus ? <span className="editor-save-status">{saveStatus}</span> : null}
+            {!document.readOnly ? (
+              <button className="primary" onClick={() => onSave(draft)}>{t(language, 'editor.save')}</button>
+            ) : null}
           </div>
         ) : null}
       </div>
       {document ? (
         <textarea value={draft} onChange={(event) => setDraft(event.target.value)} readOnly={document.readOnly} />
       ) : null}
-      {!document ? <p>{t(language, 'editor.noEditableDocument')}</p> : null}
+      {!document ? (
+        <div className="editor-empty-guide">
+          <p>{t(language, 'editor.noEditableDocument')}</p>
+          <p className="editor-empty-hint">{t(language, 'editor.emptyHint')}</p>
+        </div>
+      ) : null}
     </section>
   );
 }

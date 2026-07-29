@@ -4,10 +4,12 @@ export { createInitialWorkflowState } from '../../shared/workflowDefaults.js';
 const orderedRequiredStages: WorkflowStageId[] = [
   'intake',
   'world_outline',
+  'character_bible',
   'act_timeline',
   'scene_outline',
   'chapter_draft',
-  'act_scoring'
+  'act_scoring',
+  'full_review'
 ];
 
 export function findNextWorkflowStage(stage: WorkflowStageId): WorkflowStageId | null {
@@ -26,7 +28,7 @@ export function confirmWorkflowStage(
   }
 
   const status = state.stages[stage].status;
-  if (status !== 'draft' && status !== 'regenerating') {
+  if (status !== 'draft' && status !== 'regenerating' && status !== 'optional') {
     throw new Error(`Cannot confirm stage ${stage} with status ${status}`);
   }
 
@@ -43,7 +45,7 @@ export function confirmWorkflowStage(
       for (const downstreamStage of orderedRequiredStages.slice(nextStageIndex + 1)) {
         stages[downstreamStage] = { status: 'locked' };
       }
-    } else if (state.stages[nextStage].status === 'locked') {
+    } else if (state.stages[nextStage].status === 'locked' || state.stages[nextStage].status === 'optional') {
       stages[nextStage] = { ...state.stages[nextStage], status: 'draft' };
     }
   }

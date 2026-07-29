@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { ChapterContextPacket, ChapterReviewReport, StorySkillRequest, StorySkillResponse } from '../shared/types';
-import { createBuiltinStoryPlugin } from '../renderer/services/plugins/builtinStoryPlugin';
+import { createSkillStoryPlugin } from '../renderer/services/plugins/skillStoryPlugin';
 import type { StoryPlugin } from '../renderer/services/plugins/storyPluginTypes';
-import { createStoryPluginRegistry } from '../renderer/services/plugins/storyPluginRegistry';
+import { createPluginRegistry } from '../renderer/services/plugins/storyPluginTypes';
 import {
   confirmDraftSave,
   forceSaveDraftAfterWarning,
@@ -11,6 +11,7 @@ import {
 
 function packet(): ChapterContextPacket {
   return {
+    chapterId: 2,
     currentChapterTarget: 'Reveal the ledger.',
     currentActOutline: { id: 'act-1', title: 'Act 1', time: 'Day 1', location: 'Archive', characters: ['Mira'], movement: 'Find ledger', summary: 'Mira finds the ledger.' },
     anchors: [],
@@ -41,7 +42,7 @@ describe('chapterDraftWorkflow', () => {
       }
     };
 
-    const result = await generateReviewedChapterDraft(createStoryPluginRegistry([plugin]), packet());
+    const result = await generateReviewedChapterDraft(createPluginRegistry([plugin]), packet());
 
     expect(result.status).toBe('reviewed');
     expect(result.review.issues[0].message).toContain('Ledger location');
@@ -74,7 +75,7 @@ describe('chapterDraftWorkflow', () => {
       }
     };
 
-    await expect(generateReviewedChapterDraft(createStoryPluginRegistry([plugin]), packet())).rejects.toThrow(
+    await expect(generateReviewedChapterDraft(createPluginRegistry([plugin]), packet())).rejects.toThrow(
       'write_chapter did not return a chapter'
     );
     expect(reviewChapter).not.toHaveBeenCalled();
@@ -94,14 +95,14 @@ describe('chapterDraftWorkflow', () => {
       }
     };
 
-    await expect(generateReviewedChapterDraft(createStoryPluginRegistry([plugin]), packet())).rejects.toThrow(
+    await expect(generateReviewedChapterDraft(createPluginRegistry([plugin]), packet())).rejects.toThrow(
       'review_chapter did not return a valid review report'
     );
   });
 
-  it('generates a ready-to-save draft through the built-in plugin registry with legacy review output', async () => {
+  it('generates a ready-to-save draft through the built-in plugin registry with a complete review output', async () => {
     const runner = async (request: StorySkillRequest): Promise<StorySkillResponse> => {
-      if (request.skillId === 'next-chapter-workshop') {
+      if (request.skillId === 'chapter-draft-writer') {
         return {
           skillId: request.skillId,
           provider: 'mock',
@@ -118,14 +119,14 @@ describe('chapterDraftWorkflow', () => {
         return {
           skillId: request.skillId,
           provider: 'mock',
-          output: { status: 'passed', summary: 'No continuity issue.' }
+          output: { status: 'passed', summary: 'No continuity issue.', issues: [] }
         };
       }
 
       throw new Error(`Unexpected skill ${request.skillId}`);
     };
 
-    const registry = createStoryPluginRegistry([createBuiltinStoryPlugin(runner)]);
+    const registry = createPluginRegistry([createSkillStoryPlugin(runner)]);
 
     const result = await generateReviewedChapterDraft(registry, packet());
 

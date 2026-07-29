@@ -1,4 +1,4 @@
-import type { ChapterContextPacket, ChapterReviewReport, StoryProject } from '../../shared/types.js';
+import type { ChapterContextPacket, ChapterReviewReport, GeneratedChapterDraft, StoryProject } from '../../shared/types.js';
 import type { DraftSaveDecision } from './chapterDraftWorkflow';
 import type { StoryPluginRegistry } from './plugins/storyPluginTypes';
 import { buildChapterContextPacket } from './chapterContext';
@@ -6,7 +6,7 @@ import { forceSaveDraftAfterWarning, generateReviewedChapterDraft } from './chap
 
 export interface WorkflowChapterDraftResult {
   contextPacket: ChapterContextPacket;
-  chapter: unknown;
+  chapter: GeneratedChapterDraft;
   review: ChapterReviewReport;
   saveDecision: DraftSaveDecision;
 }
@@ -31,6 +31,13 @@ export async function generateWorkflowChapterDraft(
     throw new Error('Workflow scene outline is missing');
   }
 
+  if (!actTimeline.acts.some((act) => act.id === actId)) {
+    throw new Error(`Workflow act timeline does not contain act ${actId}`);
+  }
+  if (!sceneOutline.acts.some((act) => act.actId === actId && act.chapters.some((chapter) => chapter.chapterId === chapterId))) {
+    throw new Error(`Workflow scene outline does not contain chapter ${chapterId} for act ${actId}`);
+  }
+
   const contextPacket = buildChapterContextPacket({
     project,
     actTimeline,
@@ -43,7 +50,7 @@ export async function generateWorkflowChapterDraft(
 
   return {
     contextPacket,
-    chapter: draft.chapter,
+    chapter: draft.chapter as GeneratedChapterDraft,
     review: draft.review,
     saveDecision: draft.saveDecision
   };

@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
+  <title id="title">StoryForge AI</title>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#40275f"/>
+      <stop offset="1" stop-color="#ef7e5c"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <path d="M145 118h196c18 0 32 14 32 32v212c0 18-14 32-32 32H171c-14 0-26-12-26-26V150c0-18 14-32 32-32z" fill="#fff8ed"/>
+  <path d="M184 178h150M184 228h112M184 278h132" fill="none" stroke="#40275f" stroke-width="24" stroke-linecap="round"/>
+  <path d="m321 308 20 20 47-58" fill="none" stroke="#ef7e5c" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

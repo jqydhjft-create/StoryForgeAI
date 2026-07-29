@@ -57,4 +57,21 @@ describe('workflowArtifacts', () => {
     expect(() => normalizeActTimeline({ acts: [{ id: 'act-1' }] })).toThrow('Invalid act timeline');
     expect(() => normalizeActScoreReport({ actId: 'act-1', plotContinuity: 11 })).toThrow('Invalid act score');
   });
+
+  it('rejects scene outlines that reuse a chapter ID in a later act', () => {
+    expect(() => normalizeSceneOutline({
+      acts: [
+        {
+          actId: 'act-1',
+          summary: 'Opening act',
+          chapters: [{ id: 'chapter-1-1', actId: 'act-1', chapterId: 1, target: 'Open', scenes: [], anchors: [] }]
+        },
+        {
+          actId: 'act-2',
+          summary: 'Closing act',
+          chapters: [{ id: 'chapter-2-1', actId: 'act-2', chapterId: 1, target: 'Close', scenes: [], anchors: [] }]
+        }
+      ]
+    })).toThrow('Scene outline chapter IDs must be globally unique');
+  });
 });

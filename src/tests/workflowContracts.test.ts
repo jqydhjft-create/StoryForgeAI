@@ -14,6 +14,7 @@ describe('workflow contracts', () => {
       stages: {
         intake: { status: 'draft' },
         world_outline: { status: 'locked' },
+        character_bible: { status: 'locked' },
         act_timeline: { status: 'locked' },
         scene_outline: { status: 'locked' },
         chapter_draft: { status: 'locked' },
@@ -49,6 +50,7 @@ describe('workflow contracts', () => {
     };
 
     const packet: ChapterContextPacket = {
+      chapterId: 1,
       currentChapterTarget: 'Reveal the ledger without resolving the pact.',
       currentActOutline: timeline.acts[0],
       anchors: [{ id: 'a1', text: 'Echo Act 1 Chapter 1: hidden pact', actId: 'act-1', chapterId: 1 }],

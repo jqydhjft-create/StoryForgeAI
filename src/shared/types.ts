@@ -1,4 +1,4 @@
-export type TreeNodeKind = 'world' | 'character' | 'plot' | 'chapter' | 'export' | 'summary';
+export type TreeNodeKind = 'world' | 'character' | 'plot' | 'scene_outline' | 'chapter' | 'export' | 'summary';
 
 export interface StoryConcept {
   title: string;
@@ -38,6 +38,11 @@ export interface ChapterMeta {
   characters: string[];
   locations: string[];
   timelineDay: number;
+}
+
+export interface GeneratedChapterDraft {
+  meta: ChapterMeta;
+  content: string;
 }
 
 export interface ProjectSettings {
@@ -81,7 +86,11 @@ export type StorySkillId =
   | 'logic-detective'
   | 'integrated-gate'
   | 'summary-ai'
-  | 'next-chapter-workshop';
+  | 'next-chapter-workshop'
+  | 'chapter-draft-writer'
+  | 'act-timeline-generator'
+  | 'scene-outline-generator'
+  | 'score-act';
 
 export interface StorySkillRequest {
   skillId: StorySkillId;
@@ -121,9 +130,17 @@ export interface AiProviderConfigInput {
   baseUrl: string;
 }
 
+export interface WorkflowBenchmarkRunRequest {
+  provider: 'deepseek';
+  model: 'deepseek-v4-pro';
+  temperature: number;
+  maxTokens: number;
+}
+
 export type WorkflowStageId =
   | 'intake'
   | 'world_outline'
+  | 'character_bible'
   | 'act_timeline'
   | 'scene_outline'
   | 'chapter_draft'
@@ -219,6 +236,7 @@ export interface MatchedHistoryFragment {
 }
 
 export interface ChapterContextPacket {
+  chapterId: number;
   currentChapterTarget: string;
   currentActOutline: ActTimelineItem;
   anchors: StoryAnchor[];
@@ -254,6 +272,7 @@ export interface ActScoreReport {
 export interface StoryWorkflowArtifacts {
   initialSettingBook?: InitialSettingBook;
   worldOutline?: WorldOutlineArtifact;
+  characterBible?: CharacterProfile[];
   actTimeline?: ActTimeline;
   sceneOutline?: SceneOutlineArtifact;
   chapterReviews?: Record<number, ChapterReviewReport>;
@@ -271,6 +290,7 @@ export interface StoryWorkflowState {
 export type StoryPluginCapability =
   | 'generate_initial_brief'
   | 'generate_world_and_outline'
+  | 'generate_characters'
   | 'generate_act_timeline'
   | 'generate_scene_outline'
   | 'write_chapter'

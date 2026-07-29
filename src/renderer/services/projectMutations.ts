@@ -1,11 +1,14 @@
-import type { CharacterProfile, ProjectFileWrite, StoryProject, SummaryData } from '../../shared/types.js';
-import type { StorySeed } from './mockAiService';
-import type { NextChapterWorkflowResult } from './nextChapterWorkflow';
-import type { StoryWorkflowResult } from './storyWorkflow';
+import type {
+  CharacterProfile,
+  GeneratedChapterDraft,
+  ProjectFileWrite,
+  StoryProject,
+  SummaryData
+} from '../../shared/types.js';
 
 type Selection = { kind: 'world' | 'character' | 'chapter' | 'summary'; id: string };
 
-interface ProjectMutation {
+export interface ProjectMutation {
   project: StoryProject;
   files: ProjectFileWrite[];
   deletedFiles: string[];
@@ -47,40 +50,6 @@ function uniqueCharacterId(project: StoryProject, name: string): string {
   return `${base}-${suffix}`;
 }
 
-function normalizeGeneratedCharacters(characters: CharacterProfile[]): CharacterProfile[] {
-  const used = new Set<string>();
-
-  return characters.map((character) => {
-    const base = slugify(character.id) || slugify(character.name);
-    let id = base;
-    let suffix = 2;
-    while (used.has(id)) {
-      id = `${base}-${suffix}`;
-      suffix += 1;
-    }
-    used.add(id);
-
-    return { ...character, id };
-  });
-}
-
-function createDefaultSeedChapter(seed: StorySeed): StoryWorkflowResult['initialChapter'] {
-  const protagonist = seed.characters[0]?.name ?? '主角';
-  const companion = seed.characters[1]?.name ?? '同行者';
-
-  return {
-    meta: {
-      id: 1,
-      title: '第一章',
-      sceneCount: 1,
-      characters: [protagonist, companion],
-      locations: ['废弃礼拜堂'],
-      timelineDay: 1
-    },
-    content: `# 第一章\n\n黎明时分，${protagonist}在一座废弃礼拜堂里发现了${companion}。`
-  };
-}
-
 export function buildSummaryCacheFile(project: StoryProject, summary: SummaryData): ProjectFileWrite {
   return {
     relativePath: 'chapters/meta.json',
@@ -91,52 +60,14 @@ export function buildSummaryCacheFile(project: StoryProject, summary: SummaryDat
   };
 }
 
-export function createNextChapter(project: StoryProject): ProjectMutation {
-  const nextId = Math.max(0, ...project.chapters.map((chapter) => chapter.meta.id)) + 1;
-  const chapter = {
-    meta: {
-      id: nextId,
-      title: `Chapter ${nextId}`,
-      sceneCount: 1,
-      characters: [],
-      locations: [],
-      timelineDay: nextId
-    },
-    content: `# Chapter ${nextId}\n\n`
-  };
-  const nextProject = {
-    ...project,
-    chapters: [...project.chapters, chapter]
-  };
-
-  return {
-    project: nextProject,
-    files: [
-      { relativePath: formatChapterPath(nextId), content: chapter.content },
-      buildSummaryCacheFile(nextProject, nextProject.summary)
-    ],
-    deletedFiles: [],
-    selection: { kind: 'chapter', id: String(nextId) }
-  };
-}
-
-export function applyNextChapterToProject(project: StoryProject, workflow: NextChapterWorkflowResult): ProjectMutation {
-  const existingChapterIds = new Set(project.chapters.map((chapter) => chapter.meta.id));
-  const chapter = existingChapterIds.has(workflow.chapter.meta.id)
-    ? {
-        ...workflow.chapter,
-        meta: {
-          ...workflow.chapter.meta,
-          id: Math.max(0, ...project.chapters.map((item) => item.meta.id)) + 1
-        }
-      }
-    : workflow.chapter;
-
+export function appendChapterDraft(project: StoryProject, chapter: GeneratedChapterDraft): ProjectMutation {
+  if (project.chapters.some((item) => item.meta.id === chapter.meta.id)) {
+    throw new Error(`Chapter ${chapter.meta.id} already exists`);
+  }
   const nextProject = {
     ...project,
     chapters: [...project.chapters, chapter].sort((left, right) => left.meta.id - right.meta.id)
   };
-
   return {
     project: nextProject,
     files: [
@@ -148,7 +79,7 @@ export function applyNextChapterToProject(project: StoryProject, workflow: NextC
   };
 }
 
-export function replaceChapterWithDraft(project: StoryProject, chapter: StoryWorkflowResult['initialChapter']): ProjectMutation {
+export function replaceChapterWithDraft(project: StoryProject, chapter: GeneratedChapterDraft): ProjectMutation {
   const nextProject = {
     ...project,
     chapters: project.chapters
@@ -216,59 +147,5 @@ export function deleteChapter(project: StoryProject, id: number): ProjectMutatio
     files: [buildSummaryCacheFile(nextProject, nextProject.summary)],
     deletedFiles: [formatChapterPath(id)],
     selection: nextSelection
-  };
-}
-
-export function applyStorySeedToProject(project: StoryProject, seed: StorySeed): ProjectMutation {
-  return applyStoryWorkflowToProject(project, {
-    idea: '',
-    seed,
-    initialChapter: createDefaultSeedChapter(seed),
-    gateReports: [],
-    contextDigest: '',
-    changeLog: []
-  });
-}
-
-export function applyStoryWorkflowToProject(project: StoryProject, workflow: StoryWorkflowResult): ProjectMutation {
-  const failedGate = workflow.gateReports.find((report) => report.status === 'failed');
-  if (failedGate) {
-    throw new Error(`Quality gate failed: ${failedGate.label}`);
-  }
-
-  const seed = {
-    ...workflow.seed,
-    characters: normalizeGeneratedCharacters(workflow.seed.characters)
-  };
-  const summary = { timeline: [], locations: [], characters: [] };
-  const chapters = [workflow.initialChapter];
-  const nextProject: StoryProject = {
-    ...project,
-    settings: { ...project.settings, name: seed.concept.title },
-    world: seed.world,
-    characters: seed.characters,
-    plot: seed.plot,
-    chapters,
-    summary
-  };
-  const seedCharacterIds = new Set(seed.characters.map((character) => character.id));
-
-  return {
-    project: nextProject,
-    files: [
-      { relativePath: 'settings.json', content: formatJson(nextProject.settings) },
-      { relativePath: 'world/bible.json', content: formatJson(nextProject.world) },
-      { relativePath: 'plot/beat_sheet.json', content: formatJson(nextProject.plot) },
-      ...nextProject.characters.map((character) => ({
-        relativePath: formatCharacterPath(character.id),
-        content: formatJson(character)
-      })),
-      { relativePath: formatChapterPath(1), content: chapters[0].content },
-      buildSummaryCacheFile(nextProject, summary)
-    ],
-    deletedFiles: project.characters
-      .filter((character) => !seedCharacterIds.has(character.id))
-      .map((character) => formatCharacterPath(character.id)),
-    selection: { kind: 'world', id: 'bible' }
   };
 }

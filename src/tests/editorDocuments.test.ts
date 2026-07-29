@@ -36,6 +36,75 @@ describe('editorDocuments', () => {
     expect(document?.content).toContain('Low fantasy');
   });
 
+  it('maps unified world and act artifacts to readable read-only documents', () => {
+    const artifactProject: StoryProject = {
+      ...project,
+      workflow: {
+        ...project.workflow,
+        artifacts: {
+          ...project.workflow.artifacts,
+          worldOutline: {
+            worldDocument: 'The Ash Road crosses a kingdom of moving cities.',
+            masterOutline: 'Ash follows the road toward the lost capital.'
+          },
+          actTimeline: {
+            acts: [{
+              id: 'act-1',
+              title: 'The road opens',
+              time: 'Day 1',
+              location: 'Ash Road',
+              characters: ['Ash'],
+              movement: 'Ash leaves the chapel.',
+              summary: 'The journey begins.'
+            }]
+          }
+        }
+      }
+    };
+
+    const world = getEditableDocument(artifactProject, { kind: 'world', id: 'bible' });
+    const act = getEditableDocument(artifactProject, { kind: 'plot', id: 'act-1' });
+
+    expect(world).toMatchObject({ readOnly: true, relativePath: 'workflow/world-outline.md' });
+    expect(world?.content).toContain('moving cities');
+    expect(act).toMatchObject({ readOnly: true, relativePath: 'workflow/acts/act-1.md' });
+    expect(act?.content).toContain('The journey begins.');
+  });
+
+  it('maps a scene-outline selection to a read-only chapter outline without changing prose chapters', () => {
+    const artifactProject: StoryProject = {
+      ...project,
+      workflow: {
+        ...project.workflow,
+        artifacts: {
+          ...project.workflow.artifacts,
+          sceneOutline: {
+            acts: [{
+              actId: 'act-1',
+              summary: 'Opening',
+              chapters: [{
+                id: 'chapter-1',
+                actId: 'act-1',
+                chapterId: 1,
+                target: 'Ash enters the chapel.',
+                scenes: [{ id: 'scene-1', summary: 'A bell rings.', characters: ['Ash'], location: 'Chapel' }],
+                anchors: [{ id: 'anchor-1', text: 'Keep moving.', actId: 'act-1', chapterId: 1 }]
+              }]
+            }]
+          }
+        }
+      }
+    };
+
+    const outline = getEditableDocument(artifactProject, { kind: 'scene_outline', id: 'chapter-1' });
+    const unchanged = applyEditableDocument(artifactProject, { kind: 'scene_outline', id: 'chapter-1' }, 'ignored');
+
+    expect(outline).toMatchObject({ readOnly: true, relativePath: 'workflow/scene-outline/chapter-1.md' });
+    expect(outline?.content).toContain('Ash enters the chapel.');
+    expect(outline?.content).toContain('A bell rings.');
+    expect(unchanged.chapters).toEqual(artifactProject.chapters);
+  });
+
   it('maps a chapter selection to the chapter markdown file', () => {
     const document = getEditableDocument(project, { kind: 'chapter', id: '1' });
 

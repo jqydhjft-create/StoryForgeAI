@@ -1,90 +1,111 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type {
   AiConnectionTestResult,
   AiProviderConfigInput,
   AiProviderStatus,
   ChapterReviewReport,
-  ProjectFileWrite,
+  GeneratedChapterDraft,
   StoryProject,
   SummaryData,
   WorkflowStageId
 } from '../shared/types.js';
 import { StartScreen } from './components/StartScreen';
-import { ProjectTree, type TreeSelection } from './components/ProjectTree';
 import { EditorPane } from './components/EditorPane';
-import { AssistantPanel } from './components/AssistantPanel';
-import { WorkflowPanel } from './components/WorkflowPanel';
+import { AssetContextList } from './components/AssetContextList';
+import { AssetTypeRail } from './components/AssetTypeRail';
+import { ContextRail } from './components/ContextRail';
+import { SettingsDiagnostics } from './components/SettingsDiagnostics';
+import { WorkspaceHeader } from './components/WorkspaceHeader';
+import { WorkspaceShell } from './components/WorkspaceShell';
+import { assetTypeForTreeSelection, resolveAssetListCollapsed, type AssetType, type TreeSelection } from './components/workspaceModel';
+import { StoryStarter } from './components/StoryStarter';
+import { IntakeConfirmation } from './components/IntakeConfirmation';
 import type { Language } from './i18n';
 import { t } from './i18n';
 import { applyEditableDocument, getEditableDocument } from './services/editorDocuments';
-import { writeProjectExports } from './services/exportService';
-import { runStoryWorkflow, type StoryWorkflowResult, type WorkflowGateReport } from './services/storyWorkflow';
 import {
-  applyStoryWorkflowToProject,
-  applyNextChapterToProject,
   replaceChapterWithDraft,
+  appendChapterDraft,
   buildSummaryCacheFile,
   createNewCharacter,
-  createNextChapter,
   deleteChapter,
   deleteCharacter
 } from './services/projectMutations';
+import type { ProjectMutation } from './services/projectMutations';
 import { runSummaryWorkflow, upsertChapterSummary } from './services/summaryService';
-import { runNextChapterWorkflow } from './services/nextChapterWorkflow';
-import type { NextChapterDraft, NextChapterWorkflowResult } from './services/nextChapterWorkflow';
 import { runLightReview, type LiveReviewWarning } from './services/liveReviewService';
 import { initialProjectName } from './services/startupDefaults';
-import { createBuiltinStoryPlugin } from './services/plugins/builtinStoryPlugin';
-import { createStoryPluginRegistry } from './services/plugins/storyPluginRegistry';
-import { createDesktopSkillRunner } from './services/storySkills';
-import { generateStageArtifact } from './services/workflowStageActions';
+import { createBrowserAppService } from './services/browser/browserAppService';
+import type { AppService } from './services/appService';
+import { createNovelDownload, createProjectBackupDownload, triggerBrowserDownload } from './services/browser/browserDownloads';
+import { resolveIntakeScreen } from './services/intakeScreenState';
+import { resolveNextWorkflowChapter } from './services/workflowNextChapter';
 import {
   buildWorkflowStateFile,
-  confirmWorkflowArtifact,
   recordWorkflowChapterReview,
-  requestWorkflowRegeneration,
   type WorkflowProjectMutation
 } from './services/workflowMutations';
 import {
   forceSaveWorkflowChapterDraft,
-  generateWorkflowChapterDraft,
   type WorkflowChapterDraftResult
 } from './services/workflowChapterLoop';
+import { persistWorkflowMutationForRequest } from './services/workflowRequestPersistence';
+export { reconcileWorkflowProject, reconcileWorkflowProjectForRequest } from './services/workflowProjectReconciliation';
 
-export function App() {
+export function startModelRunTicker(onTick: (now: number) => void): () => void {
+  onTick(Date.now());
+  const timer = setInterval(() => onTick(Date.now()), 1_000);
+  return () => clearInterval(timer);
+}
+
+export interface AppProps {
+  /** Allows the browser service boundary to be exercised without Electron globals. */
+  appService?: AppService;
+}
+
+export function App({ appService: suppliedAppService }: AppProps = {}) {
   const [language, setLanguage] = useState<Language>('en');
   const [projectName, setProjectName] = useState(initialProjectName);
+  const [storyIdea, setStoryIdea] = useState('');
   const [project, setProject] = useState<StoryProject | null>(null);
   const [summary, setSummary] = useState<SummaryData>({ timeline: [], locations: [], characters: [] });
   const [selection, setSelection] = useState<TreeSelection>({ kind: 'world', id: 'bible' });
   const [error, setError] = useState('');
   const [saveStatus, setSaveStatus] = useState('');
   const [exportStatus, setExportStatus] = useState('');
-  const [gateReports, setGateReports] = useState<WorkflowGateReport[]>([]);
   const [workflowLog, setWorkflowLog] = useState<string[]>([]);
   const [aiConnectionResult, setAiConnectionResult] = useState<AiConnectionTestResult | null>(null);
   const [isSummaryRefreshing, setIsSummaryRefreshing] = useState(false);
   const [isAiTesting, setIsAiTesting] = useState(false);
   const [isAiConfigApplying, setIsAiConfigApplying] = useState(false);
-  const [isFailedGateRetrying, setIsFailedGateRetrying] = useState(false);
-  const [isNextChapterGenerating, setIsNextChapterGenerating] = useState(false);
+  const [localProjects, setLocalProjects] = useState<StoryProject[]>([]);
   const [isWorkflowBusy, setIsWorkflowBusy] = useState(false);
-  const [lastWorkflowIdea, setLastWorkflowIdea] = useState<string | null>(null);
-  const [nextChapterStatus, setNextChapterStatus] = useState('');
   const [workflowStatus, setWorkflowStatus] = useState('');
-  const [nextChapterNotes, setNextChapterNotes] = useState<string[]>([]);
-  const [assistantCollapsed, setAssistantCollapsed] = useState(false);
-  const [pendingStoryDraft, setPendingStoryDraft] = useState<StoryWorkflowResult | null>(null);
-  const [pendingChapterDraft, setPendingChapterDraft] = useState<NextChapterWorkflowResult | null>(null);
+  const [workflowIdea, setWorkflowIdea] = useState(initialProjectName);
+  const [workspaceAssetType, setWorkspaceAssetType] = useState<AssetType>('chapters');
+  const assetListUserChoice = useRef<boolean | null>(null);
+  const [assetListCollapsed, setAssetListCollapsed] = useState(() =>
+    resolveAssetListCollapsed(typeof window === 'undefined' ? undefined : window.innerWidth, null)
+  );
+  const [contextRailExpanded, setContextRailExpanded] = useState(true);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [modelRunStartedAt, setModelRunStartedAt] = useState<number | null>(null);
+  const [modelRunStage, setModelRunStage] = useState<WorkflowStageId | null>(null);
+  const [modelRunLabel, setModelRunLabel] = useState<string | null>(null);
+  const [modelRunOutcome, setModelRunOutcome] = useState<'success' | 'error' | null>(null);
+  const [modelRunElapsedSeconds, setModelRunElapsedSeconds] = useState<number | null>(null);
+  const [modelRunStatus, setModelRunStatus] = useState('');
+  const [modelRunError, setModelRunError] = useState('');
+  const [modelRunNow, setModelRunNow] = useState(Date.now());
+  const [viewedWorkflowStage, setViewedWorkflowStage] = useState<WorkflowStageId>('intake');
   const [pendingWorkflowChapterDraft, setPendingWorkflowChapterDraft] = useState<WorkflowChapterDraftResult | null>(null);
   const [workflowDrafts, setWorkflowDrafts] = useState<Partial<Record<WorkflowStageId, unknown>>>({});
   const [liveReviewWarnings, setLiveReviewWarnings] = useState<LiveReviewWarning[]>([]);
   const [editorDirty, setEditorDirty] = useState(false);
-  const [chapterHistory, setChapterHistory] = useState<Record<string, StoryProject['chapters']>>({});
   const [aiConfigDraft, setAiConfigDraft] = useState<AiProviderConfigInput>({
     provider: 'openai',
     apiKey: '',
-    model: 'gpt-4o-mini',
+    model: 'gpt-5.6',
     baseUrl: 'https://api.openai.com/v1'
   });
   const [aiStatus, setAiStatus] = useState<AiProviderStatus>({
@@ -94,37 +115,134 @@ export function App() {
     baseUrl: ''
   });
 
-  const canUseDesktopApi = useMemo(() => Boolean(window.storyforge), []);
+  const appService = useMemo(() => suppliedAppService ?? createBrowserAppService(), [suppliedAppService]);
+  const projectRef = useRef<StoryProject | null>(null);
+  const modelRunStartedAtRef = useRef<number | null>(null);
+  const getWorkflowService = useCallback(() => appService.createWorkflowService(), [appService]);
   const activeDocument = project ? getEditableDocument(project, selection) : null;
-  const focusedChapterTitle =
-    project && selection.kind === 'chapter'
-      ? project.chapters.find((chapter) => String(chapter.meta.id) === selection.id)?.meta.title ?? ''
-      : '';
   const onEditorDirtyChange = useCallback((dirty: boolean) => setEditorDirty(dirty), []);
+  const aiConfigFields = aiConfigDraft;
+  const replaceProject = useCallback((nextProject: StoryProject) => {
+    projectRef.current = nextProject;
+    setProject(nextProject);
+  }, []);
+  const clearModelRun = useCallback(() => {
+    setModelRunStartedAt(null);
+    setModelRunStage(null);
+    setModelRunLabel(null);
+    setModelRunOutcome(null);
+    setModelRunElapsedSeconds(null);
+    modelRunStartedAtRef.current = null;
+    setModelRunStatus('');
+    setModelRunError('');
+  }, []);
+  const beginModelRun = useCallback((stage: WorkflowStageId | null, label: string | null, statusText: string) => {
+    const startedAt = Date.now();
+    modelRunStartedAtRef.current = startedAt;
+    setModelRunStartedAt(startedAt);
+    setModelRunStage(stage);
+    setModelRunLabel(label);
+    setModelRunStatus(statusText);
+    setModelRunError('');
+    setModelRunOutcome(null);
+    setModelRunElapsedSeconds(null);
+  }, []);
+  const finishModelRun = useCallback((outcome: 'success' | 'error', statusText?: string, errorText?: string) => {
+    const startedAt = modelRunStartedAtRef.current;
+    setModelRunElapsedSeconds(startedAt === null ? 0 : Math.max(0, Math.floor((Date.now() - startedAt) / 1_000)));
+    setModelRunOutcome(outcome);
+    if (statusText !== undefined) setModelRunStatus(statusText);
+    if (errorText !== undefined) setModelRunError(errorText);
+  }, []);
 
-  async function saveProjectFiles(projectPath: string, files: ProjectFileWrite[]) {
-    for (const file of files) {
-      await window.storyforge.saveProjectFile(projectPath, file.relativePath, file.content);
+  useEffect(() => {
+    if (modelRunStartedAt === null || (!isWorkflowBusy && !isSummaryRefreshing)) return;
+    return startModelRunTicker(setModelRunNow);
+  }, [isSummaryRefreshing, isWorkflowBusy, modelRunStartedAt]);
+
+  useEffect(() => {
+    const syncAssetListPresentation = () => {
+      if (assetListUserChoice.current === null) {
+        setAssetListCollapsed(resolveAssetListCollapsed(window.innerWidth, null));
+      }
+    };
+    window.addEventListener('resize', syncAssetListPresentation);
+    return () => window.removeEventListener('resize', syncAssetListPresentation);
+  }, []);
+
+  async function generateAiSeed(): Promise<string> {
+    const runner = (() => null)() as ((request: Record<string, unknown>) => Promise<{ output: unknown }>) | null;
+
+    const fallbacks = language === 'zh-CN'
+      ? ['一个被宗门逐出的废材，在悬崖底捡到会说话的骨头。', '重生回到高考前三天，她决定不再为别人活。', '末日废墟里捡到的婴儿，眼睛里燃烧着金色火焰。']
+      : ['A disgraced knight finds a child with glowing eyes in the ruins.', 'She wakes up three days before the apocalypse with memories of the future.', 'The last librarian in a world where books are illegal receives a mysterious shipment.'];
+
+    if (!runner) {
+      return fallbacks[Math.floor(Math.random() * fallbacks.length)];
+    }
+
+    const systemPrompt = language === 'zh-CN'
+      ? '你是一个创意素材生成器。按以下两步流程生成一个新的素材单元：\n\n第一步：提出一个思辨性/两难问题。这个问题应具有多重解读维度，不预设情景，保持开放，不给出明确的价值判断。\n\n第二步：以这个问题为支点，写一个故事。故事中不能直接提到问题本身，但必须体现：角色A面临生死或重大抉择，在情境与压力下做出的选择能作为一种对这个问题的回答。故事简洁，不做过多的环境或心理修饰。'
+      : 'You are a creative material generator. Follow this two-step process:\n\nStep 1: Pose a speculative or dilemma question with multiple interpretative dimensions. Do not preset a scenario. Keep the question open without explicit value judgment.\n\nStep 2: Using this question as a fulcrum, write a story. The story must not mention the question directly, but must show Character A facing a life-or-death or major choice, where their decision under pressure serves as an answer to the question. Keep the story concise.';
+
+    const userPrompt = language === 'zh-CN'
+      ? '请生成一个新的素材单元，以 JSON 格式返回。'
+      : 'Generate a new material unit. Return as JSON.';
+
+    try {
+      const response = await runner({
+        skillId: 'summary-ai',
+        systemPrompt,
+        userPrompt,
+        repairPrompt: language === 'zh-CN'
+          ? '只返回一个 JSON 对象，字段为 worldSetting（一句话世界观）和 storySynopsis（故事简介）。不要代码块、不要解释。'
+          : 'Return only a JSON object with fields worldSetting (world setting in one sentence) and storySynopsis (story synopsis). No code blocks, no extra text.',
+        outputSchema: '{ "worldSetting": "string", "storySynopsis": "string" }',
+        schemaHint: 'world setting and story synopsis',
+        exampleInput: '{}',
+        exampleOutput: JSON.stringify({
+          worldSetting: '一个所有记忆都可以被交易的近未来城市。',
+          storySynopsis: '一名破产的记忆商人收到一份订单——购买他自己的童年记忆，而卖家署名是他已经去世的女儿。'
+        })
+      });
+
+      const output = response.output;
+      if (output && typeof output === 'object' && !Array.isArray(output)) {
+        const obj = output as Record<string, unknown>;
+        const world = typeof obj.worldSetting === 'string' ? obj.worldSetting : '';
+        const synopsis = typeof obj.storySynopsis === 'string' ? obj.storySynopsis : '';
+        if (world && synopsis) {
+          return `世界观：${world}\n故事简介：${synopsis}`;
+        }
+      }
+      return fallbacks[Math.floor(Math.random() * fallbacks.length)];
+    } catch {
+      return fallbacks[Math.floor(Math.random() * fallbacks.length)];
     }
   }
 
-  async function deleteProjectFiles(projectPath: string, relativePaths: string[]) {
-    for (const relativePath of relativePaths) {
-      const characterMatch = /^characters\/([a-z0-9-]+)\.json$/i.exec(relativePath);
-      if (characterMatch) {
-        await window.storyforge.deleteCharacterFile(projectPath, characterMatch[1]);
-        continue;
-      }
-      const chapterMatch = /^chapters\/(\d+)\.md$/i.exec(relativePath);
-      if (chapterMatch) {
-        await window.storyforge.deleteChapterFile(projectPath, Number(chapterMatch[1]));
-      }
+  async function startWorkflowFromIdea() {
+    if (!project || !storyIdea.trim() || isWorkflowBusy) return;
+    setIsWorkflowBusy(true);
+    setError('');
+    setWorkflowStatus('生成创作简报...');
+    try {
+      beginModelRun('intake', null, 'Generating creative brief');
+      const artifact = await (await getWorkflowService()).generateStage(project, 'intake', storyIdea.trim());
+      setWorkflowDrafts((current) => ({ ...current, intake: artifact }));
+      setWorkflowIdea(storyIdea.trim());
+      setWorkflowStatus(t(language, 'assistant.draftReady'));
+      finishModelRun('success', t(language, 'assistant.draftReady'));
+    } catch (event) {
+      const message = event instanceof Error ? event.message : String(event);
+      setWorkflowStatus('');
+      setModelRunError(message);
+      finishModelRun('error', undefined, message);
+      setError(message);
+      console.error('流水线失败:', event);
+    } finally {
+      setIsWorkflowBusy(false);
     }
-  }
-
-  function createWorkflowRegistry() {
-    const runner = createDesktopSkillRunner();
-    return createStoryPluginRegistry(runner ? [createBuiltinStoryPlugin(runner)] : []);
   }
 
   function workflowArtifactForStage(stage: WorkflowStageId, sourceProject = project): unknown {
@@ -136,6 +254,8 @@ export function App() {
         return artifacts.initialSettingBook;
       case 'world_outline':
         return artifacts.worldOutline;
+      case 'character_bible':
+        return artifacts.characterBible;
       case 'act_timeline':
         return artifacts.actTimeline;
       case 'scene_outline':
@@ -153,33 +273,9 @@ export function App() {
     }
   }
 
-  function buildWorkflowStageInput(stage: WorkflowStageId, sourceProject: StoryProject) {
-    const artifacts = sourceProject.workflow.artifacts;
-    const actId = artifacts.actTimeline?.acts[0]?.id ?? 'act-1';
-
-    switch (stage) {
-      case 'intake':
-        return { idea: sourceProject.settings.name, projectName: sourceProject.settings.name };
-      case 'world_outline':
-        return { initialSettingBook: artifacts.initialSettingBook, projectName: sourceProject.settings.name };
-      case 'act_timeline':
-        return { initialSettingBook: artifacts.initialSettingBook, worldOutline: artifacts.worldOutline };
-      case 'scene_outline':
-        return { actTimeline: artifacts.actTimeline, worldOutline: artifacts.worldOutline };
-      case 'act_scoring':
-        return { actId, actTimeline: artifacts.actTimeline, sceneOutline: artifacts.sceneOutline, chapters: sourceProject.chapters };
-      case 'full_review':
-        return { chapters: sourceProject.chapters, summary: sourceProject.summary, workflow: sourceProject.workflow };
-      case 'chapter_draft':
-        return { chapters: sourceProject.chapters, workflow: sourceProject.workflow };
-      default:
-        return {};
-    }
-  }
-
-  function asWorkflowChapterDraft(value: unknown): NextChapterDraft | null {
+  function asWorkflowChapterDraft(value: unknown): GeneratedChapterDraft | null {
     if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
-    const chapter = value as { meta?: Partial<NextChapterDraft['meta']>; content?: unknown };
+    const chapter = value as { meta?: Partial<GeneratedChapterDraft['meta']>; content?: unknown };
     const meta = chapter.meta;
     if (!meta || typeof chapter.content !== 'string') return null;
     if (
@@ -208,34 +304,17 @@ export function App() {
     };
   }
 
-  function workflowPreviewText() {
-    if (!project) return '';
-    return JSON.stringify(
-      {
-        currentStage: project.workflow.currentStage,
-        stages: project.workflow.stages,
-        confirmedArtifacts: project.workflow.artifacts,
-        drafts: workflowDrafts,
-        pendingChapter: pendingWorkflowChapterDraft
-          ? {
-              review: pendingWorkflowChapterDraft.review,
-              saveDecision: pendingWorkflowChapterDraft.saveDecision,
-              chapter: pendingWorkflowChapterDraft.chapter
-            }
-          : null
-      },
-      null,
-      2
-    );
-  }
-
-  async function applyWorkflowProjectMutation(result: WorkflowProjectMutation) {
+  async function applyWorkflowProjectMutation(result: WorkflowProjectMutation, requestProject: StoryProject, stage: WorkflowStageId) {
     try {
-      if (result.project.rootPath && canUseDesktopApi) {
-        await saveProjectFiles(result.project.rootPath, result.files);
-      }
-      setProject(result.project);
+      const latestReconciledProject = await persistWorkflowMutationForRequest(result, requestProject, stage, {
+        currentProject: () => projectRef.current,
+        saveProject: appService.saveProject,
+        replaceProject
+      });
+      if (!latestReconciledProject) return;
+      setViewedWorkflowStage(latestReconciledProject.workflow.currentStage);
       setWorkflowStatus(t(language, 'editor.saved'));
+      finishModelRun('success', t(language, 'editor.saved'));
       setSaveStatus(t(language, 'editor.saved'));
     } catch (event) {
       setSaveStatus(t(language, 'editor.saveFailed'));
@@ -245,10 +324,7 @@ export function App() {
 
   useEffect(() => {
     setSaveStatus('');
-    setPendingChapterDraft(null);
     setPendingWorkflowChapterDraft(null);
-    setNextChapterNotes([]);
-    setNextChapterStatus('');
   }, [selection.kind, selection.id, language]);
 
   useEffect(() => {
@@ -256,72 +332,61 @@ export function App() {
   }, [language, project?.rootPath]);
 
   useEffect(() => {
-    setNextChapterStatus('');
     setWorkflowStatus('');
   }, [language, project?.rootPath]);
 
   useEffect(() => {
-    if (!canUseDesktopApi || !window.storyforge.getAiStatus) return;
-
-    void window.storyforge.getAiStatus().then(setAiStatus).catch(() => {
-      setAiStatus({ configured: false, provider: 'mock', model: 'mock', baseUrl: '' });
-    });
-  }, [canUseDesktopApi]);
+    void (async () => {
+      try {
+        const [projects, saved] = await Promise.all([appService.listProjects(), appService.loadAiConfig()]);
+        setLocalProjects(projects);
+        if (saved) setAiConfigDraft({ ...saved, apiKey: '' });
+        setAiStatus(await appService.getAiStatus());
+      } catch {
+        setAiStatus({ configured: false, provider: 'mock', model: 'mock', baseUrl: '' });
+      }
+    })();
+  }, [appService]);
 
   async function createLocalProject() {
     setError('');
 
     try {
-      if (!canUseDesktopApi) {
-        setError(t(language, 'error.desktopApiUnavailable'));
-        return;
-      }
-
-      const parentPath = await window.storyforge.chooseProjectParentDialog();
-      if (parentPath) {
-        const createdProject = await window.storyforge.createProjectInParent(parentPath, projectName);
-        setProject(createdProject);
+        const createdProject = await appService.createProject(projectName);
+        setLocalProjects(await appService.listProjects());
+        replaceProject(createdProject);
         setSummary(createdProject.summary);
-        setGateReports([]);
         setWorkflowLog([]);
-        setLastWorkflowIdea(null);
-        setPendingStoryDraft(null);
-        setPendingChapterDraft(null);
         setPendingWorkflowChapterDraft(null);
         setWorkflowDrafts({});
         setWorkflowStatus('');
         setLiveReviewWarnings([]);
-        setSelection({ kind: 'world', id: 'bible' });
-      }
+        setSelection({ kind: 'chapter', id: String(createdProject.chapters[0]?.meta.id ?? 1) });
+        setWorkspaceAssetType('chapters');
+        setViewedWorkflowStage(createdProject.workflow.currentStage);
+        clearModelRun();
     } catch (event) {
       setError(event instanceof Error ? event.message : t(language, 'error.createProject'));
     }
   }
 
-  async function openProject() {
+  async function openProject(rootPath: string) {
     setError('');
 
     try {
-      if (!canUseDesktopApi) {
-        setError(t(language, 'error.desktopApiUnavailable'));
-        return;
-      }
-
-      const path = await window.storyforge.openProjectDialog();
-      if (path) {
-        const loadedProject = await window.storyforge.loadProject(path);
-        setProject(loadedProject);
+        const loadedProject = await appService.loadProject(rootPath);
+        replaceProject(loadedProject);
         setSummary(loadedProject.summary);
-        setGateReports([]);
         setWorkflowLog([]);
-        setLastWorkflowIdea(null);
-        setPendingStoryDraft(null);
-        setPendingChapterDraft(null);
         setPendingWorkflowChapterDraft(null);
         setWorkflowDrafts({});
         setWorkflowStatus('');
+        setWorkflowIdea(loadedProject.workflow.artifacts.initialSettingBook?.worldPremise ?? loadedProject.settings.name);
         setLiveReviewWarnings(await runLightReview(loadedProject));
-      }
+        setSelection({ kind: 'chapter', id: String(loadedProject.chapters[0]?.meta.id ?? 1) });
+        setWorkspaceAssetType('chapters');
+        setViewedWorkflowStage(loadedProject.workflow.currentStage);
+        clearModelRun();
     } catch (event) {
       setError(event instanceof Error ? event.message : t(language, 'error.openProject'));
     }
@@ -332,15 +397,6 @@ export function App() {
     if (activeDocument.readOnly) return;
 
     try {
-      if (selection.kind === 'chapter') {
-        const currentChapter = project.chapters.find((chapter) => String(chapter.meta.id) === selection.id);
-        if (currentChapter && currentChapter.content !== content) {
-          setChapterHistory((current) => ({
-            ...current,
-            [selection.id]: [...(current[selection.id] ?? []), currentChapter]
-          }));
-        }
-      }
       const nextProject = applyEditableDocument(project, selection, content);
       const savedProject =
         selection.kind === 'chapter'
@@ -352,14 +408,8 @@ export function App() {
               )
             }
           : nextProject;
-      if (project.rootPath && canUseDesktopApi) {
-        await window.storyforge.saveProjectFile(project.rootPath, activeDocument.relativePath, content);
-        if (selection.kind === 'chapter') {
-          const file = buildSummaryCacheFile(savedProject, savedProject.summary);
-          await window.storyforge.saveProjectFile(project.rootPath, file.relativePath, file.content);
-        }
-      }
-      setProject(savedProject);
+      await appService.saveProject(savedProject);
+      replaceProject(savedProject);
       setSummary(savedProject.summary);
       setLiveReviewWarnings(await runLightReview(savedProject));
       setSaveStatus(t(language, 'editor.saved'));
@@ -369,13 +419,10 @@ export function App() {
     }
   }
 
-  async function applyProjectMutation(result: ReturnType<typeof createNextChapter>) {
+  async function applyProjectMutation(result: ProjectMutation) {
     try {
-      if (result.project.rootPath && canUseDesktopApi) {
-        await saveProjectFiles(result.project.rootPath, result.files);
-        await deleteProjectFiles(result.project.rootPath, result.deletedFiles);
-      }
-      setProject(result.project);
+      await appService.saveProject(result.project);
+      replaceProject(result.project);
       setSummary(result.project.summary);
       setSelection(result.selection);
       setLiveReviewWarnings(await runLightReview(result.project));
@@ -388,6 +435,7 @@ export function App() {
 
   async function generateWorkflowStage(stage: WorkflowStageId) {
     if (!project || isWorkflowBusy) return;
+    setError('');
     if (stage === 'chapter_draft') {
       await generateWorkflowPanelChapter();
       return;
@@ -396,9 +444,11 @@ export function App() {
     setIsWorkflowBusy(true);
     setWorkflowStatus('');
     try {
-      const artifact = await generateStageArtifact(createWorkflowRegistry(), stage, buildWorkflowStageInput(stage, project));
+      beginModelRun(stage, null, 'Generating workflow artifact');
+      const workflowService = await getWorkflowService();
+      const artifact = await workflowService.generateStage(project, stage, workflowIdea);
       if (stage === 'act_scoring') {
-        await applyWorkflowProjectMutation(confirmWorkflowArtifact(project, stage, artifact));
+        await applyWorkflowProjectMutation(workflowService.confirmStage(project, stage, artifact), project, stage);
         return;
       }
       if (stage === 'full_review') {
@@ -409,14 +459,17 @@ export function App() {
         await applyWorkflowProjectMutation({
           project: { ...project, workflow },
           files: [buildWorkflowStateFile(workflow)]
-        });
+        }, project, stage);
         return;
       }
       setWorkflowDrafts((current) => ({ ...current, [stage]: artifact }));
       setWorkflowStatus(t(language, 'assistant.draftReady'));
+      finishModelRun('success', t(language, 'assistant.draftReady'));
     } catch (event) {
       const message = event instanceof Error ? event.message : t(language, 'assistant.seedFailed');
       setWorkflowStatus(message);
+      setModelRunError(message);
+      finishModelRun('error', undefined, message);
       setError(message);
     } finally {
       setIsWorkflowBusy(false);
@@ -425,6 +478,7 @@ export function App() {
 
   async function confirmCurrentWorkflowStage(stage: WorkflowStageId) {
     if (!project || isWorkflowBusy) return;
+    setError('');
     if (stage === 'chapter_draft') {
       await savePendingWorkflowChapter(false);
       return;
@@ -436,7 +490,7 @@ export function App() {
       return;
     }
 
-    await applyWorkflowProjectMutation(confirmWorkflowArtifact(project, stage, artifact));
+    await applyWorkflowProjectMutation((await getWorkflowService()).confirmStage(project, stage, artifact), project, stage);
     setWorkflowDrafts((current) => {
       const next = { ...current };
       delete next[stage];
@@ -446,44 +500,64 @@ export function App() {
 
   async function regenerateWorkflowStage(stage: WorkflowStageId) {
     if (!project || isWorkflowBusy) return;
+    setError('');
     setWorkflowDrafts((current) => {
       const next = { ...current };
       delete next[stage];
       return next;
     });
     setPendingWorkflowChapterDraft(null);
-    await applyWorkflowProjectMutation(requestWorkflowRegeneration(project, stage));
+    if (stage === 'chapter_draft') {
+      await generateWorkflowPanelChapter();
+      return;
+    }
+    const workflowService = await getWorkflowService();
+    await applyWorkflowProjectMutation(workflowService.regenerateStage(project, stage), project, stage);
   }
 
   async function generateWorkflowPanelChapter() {
     if (!project || isWorkflowBusy) return;
-    if (selection.kind !== 'chapter') {
-      setWorkflowStatus(t(language, 'assistant.selectChapterFirst'));
+    setError('');
+
+    const target = resolveNextWorkflowChapter(project);
+    if (target.status === 'conflict') {
+      const message = `${t(language, 'workflow.chapterConflict')} ${target.chapterId}`;
+      setWorkflowStatus(message);
+      setError(message);
       return;
     }
-
-    const chapterId = Number(selection.id);
-    const actId =
-      project.workflow.artifacts.sceneOutline?.acts.find((act) =>
-        act.chapters.some((chapter) => chapter.chapterId === chapterId)
-      )?.actId ?? project.workflow.artifacts.actTimeline?.acts[0]?.id;
-
-    if (!actId) {
-      setWorkflowStatus('Workflow act timeline is missing');
+    if (target.status === 'unavailable') {
+      const message = t(
+        language,
+        target.reason === 'complete'
+          ? 'workflow.chapterDraftingComplete'
+          : 'workflow.chapterOutlineMissing'
+      );
+      setWorkflowStatus(message);
+      if (target.reason === 'missing_outline') setError(message);
       return;
     }
 
     setIsWorkflowBusy(true);
-    setWorkflowStatus('');
+    setWorkflowStatus('生成中...');
     try {
-      const draft = await generateWorkflowChapterDraft(createWorkflowRegistry(), project, actId, chapterId);
+      beginModelRun('chapter_draft', null, 'Generating chapter draft');
+      const workflowService = await getWorkflowService();
+      const draft = await workflowService.generateChapter(project, target.actId, target.chapterId);
       setPendingWorkflowChapterDraft(draft);
-      setWorkflowStatus(
-        draft.saveDecision === 'blocked_by_review' ? t(language, 'workflow.reviewBlocked') : t(language, 'assistant.draftReady')
-      );
+      finishModelRun('success', draft.saveDecision === 'blocked_by_review'
+        ? `Chapter draft ready; review: ${draft.review.summary}`
+        : 'Chapter draft ready');
+      if (draft.saveDecision === 'blocked_by_review') {
+        setWorkflowStatus(`已生成（审查: ${draft.review.summary}）`);
+      } else {
+        setWorkflowStatus('已生成 ✓');
+      }
     } catch (event) {
       const message = event instanceof Error ? event.message : t(language, 'assistant.nextChapterFailed');
       setWorkflowStatus(message);
+      setModelRunError(message);
+      finishModelRun('error', undefined, message);
       setError(message);
     } finally {
       setIsWorkflowBusy(false);
@@ -492,6 +566,7 @@ export function App() {
 
   async function savePendingWorkflowChapter(force: boolean) {
     if (!project || !pendingWorkflowChapterDraft) return;
+    setError('');
     if (pendingWorkflowChapterDraft.saveDecision === 'blocked_by_review' && !force) {
       setWorkflowStatus(t(language, 'workflow.reviewBlocked'));
       return;
@@ -505,12 +580,9 @@ export function App() {
       setWorkflowStatus(t(language, 'assistant.nextChapterFailed'));
       return;
     }
-    if (!project.chapters.some((item) => item.meta.id === chapter.meta.id)) {
-      setWorkflowStatus(t(language, 'assistant.selectChapterFirst'));
-      return;
-    }
-
-    const chapterMutation = replaceChapterWithDraft(project, chapter);
+    const chapterMutation = project.chapters.some((item) => item.meta.id === chapter.meta.id)
+      ? replaceChapterWithDraft(project, chapter)
+      : appendChapterDraft(project, chapter);
     const reviewMutation = recordWorkflowChapterReview(chapterMutation.project, chapter.meta.id, pendingWorkflowChapterDraft.review);
 
     setPendingWorkflowChapterDraft(null);
@@ -524,35 +596,7 @@ export function App() {
 
   async function addChapter() {
     if (!project) return;
-    await applyProjectMutation(createNextChapter(project));
-  }
-
-  async function generateNextChapter() {
-    if (!project || isNextChapterGenerating) return;
-    if (selection.kind !== 'chapter') {
-      setNextChapterStatus(t(language, 'assistant.selectChapterFirst'));
-      return;
-    }
-    if (editorDirty) {
-      setNextChapterStatus(t(language, 'assistant.saveBeforeGenerate'));
-      return;
-    }
-
-    setIsNextChapterGenerating(true);
-    setNextChapterStatus('');
-    try {
-      const workflow = await runNextChapterWorkflow(project, { targetChapterId: Number(selection.id) });
-      setPendingStoryDraft(null);
-      setPendingChapterDraft(workflow);
-      setNextChapterNotes(workflow.reviewNotes);
-      setWorkflowLog((current) => [...current, ...workflow.changeLog]);
-      setNextChapterStatus(t(language, 'assistant.draftReady'));
-    } catch (event) {
-      setNextChapterStatus(t(language, 'assistant.nextChapterFailed'));
-      setError(event instanceof Error ? event.message : t(language, 'assistant.nextChapterFailed'));
-    } finally {
-      setIsNextChapterGenerating(false);
-    }
+    await generateWorkflowPanelChapter();
   }
 
   async function addCharacter() {
@@ -575,14 +619,13 @@ export function App() {
 
     setIsSummaryRefreshing(true);
     try {
+      beginModelRun(null, 'Summary', 'Refreshing summary');
       const summaryWorkflow = await runSummaryWorkflow(project.chapters);
       const nextSummary = summaryWorkflow.summary;
       const nextProject = { ...project, summary: nextSummary };
-      if (project.rootPath && canUseDesktopApi) {
-        const file = buildSummaryCacheFile(nextProject, nextSummary);
-        await window.storyforge.saveProjectFile(project.rootPath, file.relativePath, file.content);
-      }
-      setProject(nextProject);
+      await appService.saveProject(nextProject);
+      replaceProject(nextProject);
+      finishModelRun('success', 'Summary ready');
       setSummary(nextSummary);
       setWorkflowLog((current) => [...current, ...summaryWorkflow.changeLog]);
       setSaveStatus(t(language, 'editor.saved'));
@@ -594,150 +637,40 @@ export function App() {
     }
   }
 
-  async function applyWorkflow(workflow: StoryWorkflowResult) {
-    if (!project) return;
-
-    setGateReports(workflow.gateReports);
-    setWorkflowLog(workflow.changeLog);
-    setLastWorkflowIdea(workflow.idea);
-
-    try {
-      const result = applyStoryWorkflowToProject(project, workflow);
-      if (result.project.rootPath && canUseDesktopApi) {
-        await saveProjectFiles(result.project.rootPath, result.files);
-        await deleteProjectFiles(result.project.rootPath, result.deletedFiles);
-      }
-      setProject(result.project);
-      setSummary(result.project.summary);
-      setSelection(result.selection);
-      setLiveReviewWarnings(await runLightReview(result.project));
-      setExportStatus(t(language, 'assistant.seedApplied'));
-    } catch (event) {
-      setExportStatus(t(language, 'assistant.seedFailed'));
-      setError(event instanceof Error ? event.message : t(language, 'assistant.seedFailed'));
-    }
-  }
-
-  function queueStoryDraft(workflow: StoryWorkflowResult) {
-    setPendingStoryDraft(workflow);
-    setPendingChapterDraft(null);
-    setNextChapterStatus(t(language, 'assistant.draftReady'));
-  }
-
-  async function confirmStoryDraft() {
-    if (!pendingStoryDraft) return;
-    const draft = pendingStoryDraft;
-    setPendingStoryDraft(null);
-    await applyWorkflow(draft);
-  }
-
-  async function confirmChapterDraft() {
-    if (!project || !pendingChapterDraft) return;
-    const draft = pendingChapterDraft;
-    const replacesExisting = project.chapters.some((chapter) => chapter.meta.id === draft.chapter.meta.id);
-    setPendingChapterDraft(null);
-    await applyProjectMutation(replacesExisting ? replaceChapterWithDraft(project, draft.chapter) : applyNextChapterToProject(project, draft));
-    setNextChapterStatus(t(language, replacesExisting ? 'editor.saved' : 'assistant.nextChapterReady'));
-  }
-
-  function discardDraft() {
-    setPendingStoryDraft(null);
-    setPendingChapterDraft(null);
-    setNextChapterStatus('');
-  }
-
-  async function regenerateSelectedChapter() {
-    if (!project || selection.kind !== 'chapter' || isNextChapterGenerating) return;
-    if (editorDirty) {
-      setNextChapterStatus(t(language, 'assistant.saveBeforeGenerate'));
-      return;
-    }
-
-    setIsNextChapterGenerating(true);
-    try {
-      const workflow = await runNextChapterWorkflow(project, { targetChapterId: Number(selection.id) });
-      setPendingStoryDraft(null);
-      setPendingChapterDraft(workflow);
-      setNextChapterNotes(workflow.reviewNotes);
-      setNextChapterStatus(t(language, 'assistant.draftReady'));
-    } finally {
-      setIsNextChapterGenerating(false);
-    }
-  }
-
-  async function rollbackSelectedChapter() {
-    if (!project || selection.kind !== 'chapter') return;
-    const history = chapterHistory[selection.id] ?? [];
-    const previous = history[history.length - 1];
-    if (!previous) return;
-
-    await applyProjectMutation(replaceChapterWithDraft(project, previous));
-    setChapterHistory((current) => ({
-      ...current,
-      [selection.id]: history.slice(0, -1)
-    }));
-  }
-
   async function writeExports() {
     if (!project) return;
 
     setError('');
     try {
-      const result = await writeProjectExports(
-        project,
-        summary,
-        canUseDesktopApi ? window.storyforge.saveProjectFile : undefined
-      );
-      setExportStatus(t(language, result === 'written' ? 'assistant.exportsWritten' : 'assistant.exportsReady'));
+      triggerBrowserDownload(createNovelDownload(project));
+      setExportStatus(t(language, 'assistant.exportsReady'));
     } catch (event) {
       setExportStatus(t(language, 'assistant.exportFailed'));
       setError(event instanceof Error ? event.message : t(language, 'assistant.exportFailed'));
     }
   }
 
-  async function retryFailedGate() {
-    if (!lastWorkflowIdea || isFailedGateRetrying) return;
-
-    setIsFailedGateRetrying(true);
-    try {
-      await applyWorkflow(await runStoryWorkflow({ idea: lastWorkflowIdea }));
-    } finally {
-      setIsFailedGateRetrying(false);
-    }
-  }
-
-  async function openExportsFolder() {
-    if (!project?.rootPath || !canUseDesktopApi) {
-      setExportStatus(t(language, 'assistant.openExportsUnavailable'));
-      return;
-    }
-
-    const result = await window.storyforge.openExportsFolder(project.rootPath);
-    setExportStatus(result ? result : t(language, 'assistant.exportsOpened'));
+  function downloadProjectBackup() {
+    if (!project) return;
+    triggerBrowserDownload(createProjectBackupDownload(appService.exportProject(project)));
   }
 
   async function testAiConnection() {
-    if (isAiTesting) return;
+    if (isAiTesting || isAiConfigApplying) return;
 
     setIsAiTesting(true);
-    if (!canUseDesktopApi || !window.storyforge.testAiConnection) {
-      setAiConnectionResult({ ok: false, provider: 'mock', model: 'mock', message: 'Desktop AI diagnostics are unavailable' });
-      setIsAiTesting(false);
-      return;
-    }
-
     try {
       setAiConnectionResult({ ok: false, provider: aiStatus.provider, model: aiStatus.model, message: t(language, 'assistant.testingAi') });
-      const result = await window.storyforge.testAiConnection();
+      const result = await appService.testAiConnection();
       setAiConnectionResult(result);
-      const status = await window.storyforge.getAiStatus();
+      const status = await appService.getAiStatus();
       setAiStatus(status);
     } catch (event) {
       setAiConnectionResult({
         ok: false,
         provider: aiStatus.provider,
         model: aiStatus.model,
-        message: event instanceof Error ? event.message : 'Model connection failed'
+        message: event instanceof Error ? event.message : t(language, 'app.modelConnectionFailed')
       });
     } finally {
       setIsAiTesting(false);
@@ -745,23 +678,18 @@ export function App() {
   }
 
   async function applyAiConfig() {
-    if (isAiConfigApplying) return;
+    if (isAiConfigApplying || isAiTesting) return;
 
     setIsAiConfigApplying(true);
-    if (!canUseDesktopApi || !window.storyforge.setAiConfig) {
-      setAiConnectionResult({ ok: false, provider: 'mock', model: 'mock', message: 'Desktop AI configuration is unavailable' });
-      setIsAiConfigApplying(false);
-      return;
-    }
-
     try {
-      const status = await window.storyforge.setAiConfig(aiConfigDraft);
+      await appService.saveAiConfig(aiConfigDraft);
+      const status = await appService.getAiStatus();
       setAiStatus(status);
       setAiConnectionResult({
         ok: status.configured,
         provider: status.provider,
         model: status.model,
-        message: status.configured ? 'Session AI config applied' : 'API key is required'
+        message: status.configured ? t(language, 'app.sessionAiConfigApplied') : t(language, 'app.apiKeyRequired')
       });
       setAiConfigDraft({ ...aiConfigDraft, apiKey: '' });
     } catch (event) {
@@ -769,7 +697,7 @@ export function App() {
         ok: false,
         provider: aiConfigDraft.provider,
         model: aiConfigDraft.model,
-        message: event instanceof Error ? event.message : 'Unable to apply AI config'
+        message: event instanceof Error ? event.message : t(language, 'app.unableToApplyAiConfig')
       });
     } finally {
       setIsAiConfigApplying(false);
@@ -783,92 +711,232 @@ export function App() {
         onLanguageChange={setLanguage}
         projectName={projectName}
         onProjectNameChange={setProjectName}
+        storyIdea={storyIdea}
+        onStoryIdeaChange={setStoryIdea}
         onCreateProject={createLocalProject}
         error={error}
-        onOpenProject={openProject}
+        localProjects={localProjects}
+        onOpenLocalProject={(rootPath) => void openProject(rootPath)}
+        onImportProject={async (file) => {
+          const imported = await appService.importProject(JSON.parse(await file.text()));
+          setLocalProjects(await appService.listProjects());
+          await openProject(imported.rootPath);
+        }}
+        onDeleteLocalProject={async (rootPath) => {
+          await appService.removeProject(rootPath);
+          setLocalProjects(await appService.listProjects());
+        }}
       />
     );
   }
 
-  return (
-    <main className={assistantCollapsed ? 'workspace assistant-collapsed' : 'workspace'}>
-      <ProjectTree
+  const intakeScreen = resolveIntakeScreen({
+    persistedArtifact: project.workflow.artifacts.initialSettingBook,
+    draft: workflowDrafts.intake
+  });
+
+  if (intakeScreen === 'starter') {
+    return (
+      <main className="workspace">
+        <StoryStarter
+          language={language}
+          initialIdea={storyIdea}
+          isBusy={isWorkflowBusy}
+          statusText={workflowStatus}
+          error={error}
+          aiStatus={aiStatus}
+          aiConnectionResult={aiConnectionResult}
+          aiConfigDraft={aiConfigFields}
+          isAiTesting={isAiTesting}
+          isAiConfigApplying={isAiConfigApplying}
+          onIdeaChange={setStoryIdea}
+          onRandomSeed={generateAiSeed}
+          onStartWorkflow={() => void startWorkflowFromIdea()}
+          onAiConfigDraftChange={(fields) => setAiConfigDraft((current) => ({ ...current, ...fields }))}
+          onApiKeyChange={(apiKey) => setAiConfigDraft((current) => ({ ...current, apiKey }))}
+          onApplyAiConfig={applyAiConfig}
+          onTestAiConnection={testAiConnection}
+          onClearApiKey={() => void clearAiConfig()}
+        />
+      </main>
+    );
+  }
+
+  if (intakeScreen === 'confirm') {
+    return (
+      <main className="workspace">
+        <IntakeConfirmation
+          language={language}
+          idea={workflowIdea}
+          draft={workflowDrafts.intake}
+          isBusy={isWorkflowBusy}
+          statusText={workflowStatus}
+          error={error}
+          onConfirm={() => void confirmCurrentWorkflowStage('intake')}
+          onRegenerate={() => void startWorkflowFromIdea()}
+          onEditIdea={() => {
+            setWorkflowDrafts((drafts) => {
+              const next = { ...drafts };
+              delete next.intake;
+              return next;
+            });
+            setWorkflowStatus('');
+            setError('');
+          }}
+        />
+      </main>
+    );
+  }
+
+  if (settingsOpen) {
+    return (
+      <SettingsDiagnostics
         language={language}
-        project={project}
-        selection={selection}
-        onSelect={setSelection}
-        onAddChapter={addChapter}
-        onAddCharacter={addCharacter}
-        onDeleteCharacter={deleteSelectedCharacter}
-        onDeleteChapter={deleteSelectedChapter}
+        aiStatus={aiStatus}
+        aiConnectionResult={aiConnectionResult}
+        aiConfigDraft={aiConfigFields}
+        isAiTesting={isAiTesting}
+        isAiConfigApplying={isAiConfigApplying}
+        onAiConfigDraftChange={(fields) => setAiConfigDraft((current) => ({ ...current, ...fields }))}
+        onApiKeyChange={(apiKey) => setAiConfigDraft((current) => ({ ...current, apiKey }))}
+        onApplyAiConfig={applyAiConfig}
+        onTestAiConnection={testAiConnection}
+        onClearApiKey={() => void clearAiConfig()}
+        workflowLog={workflowLog}
+        showBenchmark={false}
+        onBack={() => setSettingsOpen(false)}
       />
+    );
+  }
+
+  function handleAssetTypeChange(assetType: AssetType) {
+    setWorkspaceAssetType(assetType);
+    if (assetType === 'summary') {
+      setSelection({ kind: 'summary', id: 'summary' });
+    }
+    if (assetType === 'export') {
+      setSelection({ kind: 'export', id: 'export' });
+    }
+  }
+
+  async function clearAiConfig() {
+    if (isAiConfigApplying || isAiTesting) return;
+    try {
+      await appService.clearAiConfig();
+      setAiConfigDraft((current) => ({ ...current, apiKey: '' }));
+      setAiStatus(await appService.getAiStatus());
+      setAiConnectionResult(null);
+    } catch (event) {
+      setAiConnectionResult({
+        ok: false,
+        provider: aiStatus.provider,
+        model: aiStatus.model,
+        message: event instanceof Error ? event.message : t(language, 'app.unableToClearApiKey')
+      });
+    }
+  }
+
+  const selectAsset = (nextSelection: TreeSelection) => {
+    setSelection(nextSelection);
+    setWorkspaceAssetType(assetTypeForTreeSelection(nextSelection));
+  };
+
+  const workspaceEditor = selection.kind === 'export' ? (
+    <section className="workspace-export" aria-label="Project export">
+      <h2>Export project</h2>
+      <p>{exportStatus}</p>
+      <button type="button" className="primary" onClick={() => void writeExports()}>Download novel TXT</button>
+      <button type="button" onClick={downloadProjectBackup}>Download project backup</button>
+    </section>
+  ) : (
+    <>
+      <div className="workspace-content-actions">
+        {selection.kind === 'summary' ? (
+          <button type="button" onClick={() => void refreshSummary()} disabled={isSummaryRefreshing}>
+            {isSummaryRefreshing ? 'Refreshing summary…' : 'Refresh summary'}
+          </button>
+        ) : null}
+        {selection.kind === 'character' ? <button type="button" onClick={() => void deleteSelectedCharacter()}>Delete character</button> : null}
+        {selection.kind === 'chapter' ? <button type="button" onClick={() => void deleteSelectedChapter()}>Delete chapter</button> : null}
+        <button type="button" onClick={() => void addCharacter()}>Add character</button>
+        <button type="button" onClick={() => void addChapter()}>Add chapter</button>
+      </div>
       <EditorPane
         language={language}
         document={activeDocument}
         selection={selection}
         saveStatus={saveStatus}
-        canRegenerateChapter={selection.kind === 'chapter' && !editorDirty && !isNextChapterGenerating}
-        canRollbackChapter={selection.kind === 'chapter' && !editorDirty && Boolean(chapterHistory[selection.id]?.length)}
         onSave={saveActiveDocument}
         onDirtyChange={onEditorDirtyChange}
-        onRegenerateChapter={regenerateSelectedChapter}
-        onRollbackChapter={rollbackSelectedChapter}
+        onGenerateChapter={generateWorkflowPanelChapter}
+        canGenerateChapter={selection.kind === 'chapter'}
       />
-      <div className="assistant-stack">
-        {!assistantCollapsed ? (
-          <WorkflowPanel
-            language={language}
-            workflow={project.workflow}
-            activeArtifactText={workflowPreviewText()}
-            isBusy={isWorkflowBusy}
-            statusText={workflowStatus}
-            onGenerateStage={generateWorkflowStage}
-            onConfirmStage={confirmCurrentWorkflowStage}
-            onRegenerateStage={regenerateWorkflowStage}
-            onGenerateChapter={generateWorkflowPanelChapter}
-            onForceSaveChapter={() => void savePendingWorkflowChapter(true)}
-            onScoreAct={() => void generateWorkflowStage('act_scoring')}
-            onFullReview={() => void generateWorkflowStage('full_review')}
-          />
-        ) : null}
-        <AssistantPanel
+    </>
+  );
+
+  return (
+    <WorkspaceShell
+      assetType={workspaceAssetType}
+      assetListCollapsed={assetListCollapsed}
+      contextRailExpanded={contextRailExpanded}
+      onAssetTypeChange={handleAssetTypeChange}
+      onToggleAssetList={() => setAssetListCollapsed((current) => {
+        const next = !current;
+        assetListUserChoice.current = next;
+        return next;
+      })}
+      onToggleContextRail={() => setContextRailExpanded((current) => !current)}
+      header={(
+        <WorkspaceHeader
+          language={language}
+          projectName={project.settings.name}
+          workflow={project.workflow}
+          viewedStage={viewedWorkflowStage}
+          onViewStage={setViewedWorkflowStage}
+          onOpenDiagnostics={() => setSettingsOpen(true)}
+        />
+      )}
+      assetTypeRail={({ assetType, onAssetTypeChange }) => (
+        <AssetTypeRail language={language} assetType={assetType} onChange={onAssetTypeChange} />
+      )}
+      assetContextList={({ assetType, assetListCollapsed: collapsed, onToggleAssetList }) => (
+        <AssetContextList
           language={language}
           project={project}
-          summary={summary}
-          onRefreshSummary={refreshSummary}
-          exportStatus={exportStatus}
-          gateReports={gateReports}
-          aiStatus={aiStatus}
-          aiConnectionResult={aiConnectionResult}
-          workflowLog={workflowLog}
-          aiConfigDraft={aiConfigDraft}
-          isSummaryRefreshing={isSummaryRefreshing}
-          isAiTesting={isAiTesting}
-          isAiConfigApplying={isAiConfigApplying}
-          isFailedGateRetrying={isFailedGateRetrying}
-          isNextChapterGenerating={isNextChapterGenerating}
-          canRetryFailedGate={Boolean(lastWorkflowIdea)}
-          nextChapterStatus={nextChapterStatus}
-          nextChapterNotes={nextChapterNotes}
-          focusedChapterTitle={focusedChapterTitle}
-          pendingStoryDraft={pendingStoryDraft}
-          pendingChapterDraft={pendingChapterDraft}
-          liveReviewWarnings={liveReviewWarnings}
-          collapsed={assistantCollapsed}
-          onAiConfigDraftChange={setAiConfigDraft}
-          onApplyAiConfig={applyAiConfig}
-          onTestAiConnection={testAiConnection}
-          onRetryFailedGate={retryFailedGate}
-          onGenerateNextChapter={generateNextChapter}
-          onConfirmStoryDraft={confirmStoryDraft}
-          onConfirmChapterDraft={confirmChapterDraft}
-          onDiscardDraft={discardDraft}
-          onToggleCollapsed={() => setAssistantCollapsed((current) => !current)}
-          onWriteExports={writeExports}
-          onOpenExportsFolder={openExportsFolder}
-          onSeed={queueStoryDraft}
+          assetType={assetType}
+          selection={selection}
+          collapsed={collapsed}
+          onSelect={selectAsset}
+          onToggleCollapsed={onToggleAssetList}
         />
-      </div>
-    </main>
+      )}
+      editor={workspaceEditor}
+      contextRail={({ contextRailExpanded: expanded, onToggleContextRail }) => (
+        <ContextRail
+          language={language}
+          workflow={project.workflow}
+          drafts={workflowDrafts}
+          pendingChapterDraft={pendingWorkflowChapterDraft}
+          viewedStage={viewedWorkflowStage}
+          expanded={expanded}
+          isBusy={isWorkflowBusy || isSummaryRefreshing}
+          statusText={modelRunStatus}
+          errorText={modelRunError}
+          startedAt={modelRunStartedAt}
+          runStage={modelRunStage}
+          runLabel={modelRunLabel}
+          runOutcome={modelRunOutcome}
+          completedElapsedSeconds={modelRunElapsedSeconds}
+          now={modelRunNow}
+          onGenerateStage={(stage) => void generateWorkflowStage(stage)}
+          onConfirmStage={(stage) => void confirmCurrentWorkflowStage(stage)}
+          onRegenerateStage={(stage) => void regenerateWorkflowStage(stage)}
+          onForceSaveChapter={() => void savePendingWorkflowChapter(true)}
+          onReturnCurrent={() => setViewedWorkflowStage(project.workflow.currentStage)}
+          onRetry={() => void generateWorkflowStage(modelRunStage ?? project.workflow.currentStage)}
+          onToggle={onToggleContextRail}
+        />
+      )}
+    />
   );
 }

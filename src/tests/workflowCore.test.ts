@@ -25,6 +25,24 @@ describe('workflowCore', () => {
     expect(next.currentStage).toBe('world_outline');
   });
 
+  it('unlocks character bible after confirming world outline', () => {
+    const intake = confirmWorkflowStage(createInitialWorkflowState(), 'intake', '2026-07-27T00:00:00.000Z');
+    const next = confirmWorkflowStage(intake, 'world_outline', '2026-07-27T00:01:00.000Z');
+
+    expect(next.currentStage).toBe('character_bible');
+    expect(next.stages.character_bible.status).toBe('draft');
+    expect(next.stages.act_timeline.status).toBe('locked');
+  });
+
+  it('makes act timeline the next stage after confirming character bible', () => {
+    const intake = confirmWorkflowStage(createInitialWorkflowState(), 'intake', '2026-07-27T00:00:00.000Z');
+    const world = confirmWorkflowStage(intake, 'world_outline', '2026-07-27T00:01:00.000Z');
+    const next = confirmWorkflowStage(world, 'character_bible', '2026-07-27T00:02:00.000Z');
+
+    expect(next.currentStage).toBe('act_timeline');
+    expect(next.stages.act_timeline.status).toBe('draft');
+  });
+
   it('throws when confirming a stale previous stage after current stage advances', () => {
     const state = confirmWorkflowStage(createInitialWorkflowState(), 'intake', '2026-06-09T00:00:00.000Z');
 
@@ -81,18 +99,20 @@ describe('workflowCore', () => {
   it('invalidates downstream required stages when confirming a regenerated stage', () => {
     const intakeConfirmed = confirmWorkflowStage(createInitialWorkflowState(), 'intake', '2026-06-09T00:00:00.000Z');
     const worldConfirmed = confirmWorkflowStage(intakeConfirmed, 'world_outline', '2026-06-09T00:30:00.000Z');
-    const actConfirmed = confirmWorkflowStage(worldConfirmed, 'act_timeline', '2026-06-09T01:00:00.000Z');
+    const characterConfirmed = confirmWorkflowStage(worldConfirmed, 'character_bible', '2026-06-09T00:45:00.000Z');
+    const actConfirmed = confirmWorkflowStage(characterConfirmed, 'act_timeline', '2026-06-09T01:00:00.000Z');
     const regenerating = requestStageRegeneration(actConfirmed, 'world_outline', '2026-06-09T02:00:00.000Z');
 
     const next = confirmWorkflowStage(regenerating, 'world_outline', '2026-06-09T03:00:00.000Z');
 
     expect(next.stages.world_outline.status).toBe('confirmed');
-    expect(next.stages.act_timeline.status).toBe('draft');
-    expect(next.currentStage).toBe('act_timeline');
+    expect(next.stages.character_bible.status).toBe('draft');
+    expect(next.stages.act_timeline.status).toBe('locked');
+    expect(next.currentStage).toBe('character_bible');
     expect(next.stages.scene_outline.status).toBe('locked');
     expect(next.stages.chapter_draft.status).toBe('locked');
     expect(next.stages.act_scoring.status).toBe('locked');
-    expect(next.stages.full_review.status).toBe('optional');
+    expect(next.stages.full_review.status).toBe('locked');
   });
 
   it('throws when regenerating a locked stage', () => {
@@ -113,6 +133,7 @@ describe('workflowCore', () => {
 
   it('finds the next required stage', () => {
     expect(findNextWorkflowStage('intake')).toBe('world_outline');
-    expect(findNextWorkflowStage('act_scoring')).toBe(null);
+    expect(findNextWorkflowStage('act_scoring')).toBe('full_review');
+    expect(findNextWorkflowStage('full_review')).toBe(null);
   });
 });

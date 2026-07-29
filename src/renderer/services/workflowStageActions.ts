@@ -3,6 +3,7 @@ import type {
   ActTimeline,
   ChapterReviewIssue,
   ChapterReviewReport,
+  CharacterProfile,
   InitialSettingBook,
   SceneOutlineArtifact,
   WorkflowStageId,
@@ -20,6 +21,7 @@ import {
 interface WorkflowStageArtifactMap {
   intake: InitialSettingBook;
   world_outline: WorldOutlineArtifact;
+  character_bible: CharacterProfile[];
   act_timeline: ActTimeline;
   scene_outline: SceneOutlineArtifact;
   chapter_draft: never;
@@ -80,6 +82,30 @@ function normalizeChapterReviewReport(value: unknown): ChapterReviewReport {
   };
 }
 
+function normalizeCharacterBible(value: unknown): CharacterProfile[] {
+  if (!Array.isArray(value) || value.length === 0) {
+    throw new Error('Invalid character bible');
+  }
+
+  const characters = value.filter((item): item is CharacterProfile => {
+    if (!isRecord(item)) return false;
+    return (
+      typeof item.id === 'string' &&
+      typeof item.name === 'string' &&
+      typeof item.role === 'string' &&
+      typeof item.motivation === 'string' &&
+      typeof item.flaw === 'string' &&
+      typeof item.arc === 'string'
+    );
+  });
+
+  if (characters.length !== value.length) {
+    throw new Error('Invalid character bible');
+  }
+
+  return characters;
+}
+
 export async function generateStageArtifact<Stage extends GeneratableWorkflowStage>(
   registry: StoryPluginRegistry,
   stage: Stage,
@@ -105,6 +131,8 @@ export async function generateStageArtifact(
       return normalizeInitialSettingBook(await registry.invoke('generate_initial_brief', input));
     case 'world_outline':
       return normalizeWorldOutline(await registry.invoke('generate_world_and_outline', input));
+    case 'character_bible':
+      return normalizeCharacterBible(await registry.invoke('generate_characters', input));
     case 'act_timeline':
       return normalizeActTimeline(await registry.invoke('generate_act_timeline', input));
     case 'scene_outline':

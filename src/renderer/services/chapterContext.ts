@@ -53,9 +53,16 @@ export function buildChapterContextPacket(input: ChapterContextInput): ChapterCo
   }
 
   const sceneAct = input.sceneOutline.acts.find((act) => act.actId === input.actId);
-  const chapterOutline = sceneAct?.chapters.find((chapter) => chapter.chapterId === input.chapterId);
+  let chapterOutline = sceneAct?.chapters.find((chapter) => chapter.chapterId === input.chapterId);
   if (!chapterOutline) {
-    throw new Error(`Chapter ${input.chapterId} outline was not found in ${input.actId}`);
+    chapterOutline = {
+      id: `chapter-${input.chapterId}`,
+      actId: input.actId,
+      chapterId: input.chapterId,
+      target: `延续${currentAct.title}幕的剧情，推进故事发展。`,
+      scenes: [],
+      anchors: []
+    };
   }
 
   const recentChapterTexts = input.project.chapters
@@ -69,6 +76,7 @@ export function buildChapterContextPacket(input: ChapterContextInput): ChapterCo
   const keywords = collectKeywords(chapterOutline.target, chapterOutline.anchors, input.memory);
 
   return {
+    chapterId: input.chapterId,
     currentChapterTarget: chapterOutline.target,
     currentActOutline: cloneJsonData(currentAct),
     anchors: cloneJsonData(chapterOutline.anchors),

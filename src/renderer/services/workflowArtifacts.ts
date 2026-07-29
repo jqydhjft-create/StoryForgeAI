@@ -177,7 +177,7 @@ export function normalizeWorldOutline(value: unknown): WorldOutlineArtifact {
 }
 
 export function normalizeActTimeline(value: unknown): ActTimeline {
-  if (!isRecord(value) || !Array.isArray(value.acts)) {
+  if (!isRecord(value) || !Array.isArray(value.acts) || value.acts.length === 0) {
     invalid('Invalid act timeline');
   }
 
@@ -192,7 +192,7 @@ export function normalizeActTimeline(value: unknown): ActTimeline {
 }
 
 export function normalizeSceneOutline(value: unknown): SceneOutlineArtifact {
-  if (!isRecord(value) || !Array.isArray(value.acts)) {
+  if (!isRecord(value) || !Array.isArray(value.acts) || value.acts.length === 0) {
     invalid('Invalid scene outline');
   }
 
@@ -217,8 +217,14 @@ export function normalizeSceneOutline(value: unknown): SceneOutlineArtifact {
     invalid('Invalid scene outline');
   }
 
+  const normalizedActs = acts as SceneOutlineArtifact['acts'];
+  const chapterIds = normalizedActs.flatMap((act) => act.chapters.map((chapter) => chapter.chapterId));
+  if (new Set(chapterIds).size !== chapterIds.length) {
+    invalid('Scene outline chapter IDs must be globally unique');
+  }
+
   return {
-    acts: acts as SceneOutlineArtifact['acts']
+    acts: normalizedActs
   };
 }
 

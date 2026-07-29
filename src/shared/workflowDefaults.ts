@@ -6,6 +6,7 @@ export function createInitialWorkflowState(): StoryWorkflowState {
     stages: {
       intake: { status: 'draft' },
       world_outline: { status: 'locked' },
+      character_bible: { status: 'locked' },
       act_timeline: { status: 'locked' },
       scene_outline: { status: 'locked' },
       chapter_draft: { status: 'locked' },

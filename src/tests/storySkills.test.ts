@@ -11,11 +11,11 @@ describe('storySkills', () => {
     expect(request.exampleOutput).toContain('content');
   });
 
-  it('keeps next chapter workshop prompts focused on continuity context', () => {
-    const request = buildStorySkillRequest('next-chapter-workshop', '{"nextChapterId":2}');
+  it('keeps the unified chapter writer bound to workflow context', () => {
+    const request = buildStorySkillRequest('chapter-draft-writer', '{"chapterId":1}');
 
-    expect(request.systemPrompt).toContain('下一章');
-    expect(request.outputSchema).toContain('"reviewNotes"');
+    expect(request.systemPrompt).toContain('contextPacket.chapterId');
+    expect(request.outputSchema).toContain('"chapter"');
     expect(request.exampleOutput).toContain('"chapter"');
   });
 });
